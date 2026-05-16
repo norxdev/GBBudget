@@ -1,0 +1,444 @@
+.dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 28px 60px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.header h1 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.header p {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.period {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.emptyBanner {
+  background: var(--amber-light);
+  border: 1px solid #e8d08a;
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.emptyBanner button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+/* Health Row */
+.healthRow {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.healthCard {
+  background: var(--text);
+  color: white;
+  border-radius: var(--radius);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.healthCard::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 160px; height: 160px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 50%;
+}
+
+.healthLabel {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 16px;
+}
+
+.healthScore {
+  font-family: 'Instrument Serif', serif;
+  font-size: 72px;
+  line-height: 1;
+  letter-spacing: -2px;
+  margin-bottom: 4px;
+}
+
+.healthGrade {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.gradeBadge {
+  background: rgba(255,255,255,0.15);
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gradeDesc {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+}
+
+.healthDesc {
+  font-size: 12px;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.5;
+}
+
+.subScores {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subScoreRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.subLabel {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  width: 96px;
+  flex-shrink: 0;
+}
+
+.subBar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.subFill {
+  height: 100%;
+  background: white;
+  border-radius: 2px;
+  transition: width 0.8s ease;
+}
+
+.subVal {
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+  width: 26px;
+  text-align: right;
+}
+
+/* KPI Grid */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.kpiCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+
+.kpiTop {
+  margin-bottom: 10px;
+}
+
+.kpiIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+.kpiValue {
+  font-family: 'Instrument Serif', serif;
+  font-size: 24px;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+
+.kpiLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Framework */
+.frameworkCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+}
+
+.chartHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.chartTitle { font-size: 14px; font-weight: 500; }
+.chartSubtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.chartTag {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface2);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+.frameworkBars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.fbItem { display: flex; flex-direction: column; gap: 8px; }
+
+.fbLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fbName { font-size: 13px; font-weight: 500; }
+.fbVals { font-size: 11px; color: var(--text-muted); }
+.fbVals span { color: var(--text-light); }
+
+.fbTrack {
+  height: 10px;
+  background: var(--surface2);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.fbFill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.8s ease;
+}
+
+.fbDesc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+/* Charts */
+.chartsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.chartCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.noChart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Insights */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.sectionTitle { font-size: 15px; font-weight: 500; }
+.sectionAction {
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.sectionAction:hover { text-decoration: underline; }
+
+.insightsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.insightCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.insightType {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+
+.insightDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.insightCard h4 {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.insightCard p {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Goals */
+.emptyGoals {
+  background: var(--surface);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.emptyGoals:hover { background: var(--accent-light); }
+
+.goalsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.goalCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.goalTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.goalIcon { font-size: 22px; }
+.goalPct { font-size: 11px; font-weight: 600; color: var(--accent); }
+.goalName { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+.goalAmounts { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+
+.goalBar {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.goalFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.8s ease;
+}
+
+.goalEta { font-size: 10px; color: var(--text-light); margin-top: 8px; }
+
+@media (max-width: 900px) {
+  .healthRow { grid-template-columns: 1fr; }
+  .kpiGrid { grid-template-columns: repeat(2, 1fr); }
+  .chartsRow { grid-template-columns: 1fr; }
+  .insightsRow { grid-template-columns: 1fr; }
+  .goalsGrid { grid-template-columns: repeat(2, 1fr); }
+  .frameworkBars { grid-template-columns: 1fr; }
+}
