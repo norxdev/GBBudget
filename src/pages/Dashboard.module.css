@@ -18,6 +18,7 @@
   align-items: flex-end;
   justify-content: space-between;
   margin-bottom: 28px;
+  gap: 12px;
 }
 
 .header h1 {
@@ -45,6 +46,8 @@
   font-weight: 500;
   cursor: pointer;
   color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .emptyBanner {
@@ -53,7 +56,7 @@
   border-radius: var(--radius-sm);
   padding: 14px 18px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   margin-bottom: 24px;
   font-size: 13px;
@@ -71,7 +74,7 @@
   text-decoration: underline;
 }
 
-/* Health Row */
+/* ── HEALTH ROW ── */
 .healthRow {
   display: grid;
   grid-template-columns: 300px 1fr;
@@ -184,7 +187,7 @@
   text-align: right;
 }
 
-/* KPI Grid */
+/* ── KPI GRID ── */
 .kpiGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -200,9 +203,7 @@
   box-shadow: var(--shadow);
 }
 
-.kpiTop {
-  margin-bottom: 10px;
-}
+.kpiTop { margin-bottom: 10px; }
 
 .kpiIcon {
   width: 32px;
@@ -227,7 +228,7 @@
   color: var(--text-muted);
 }
 
-/* Framework */
+/* ── FRAMEWORK ── */
 .frameworkCard {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -242,16 +243,20 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+  gap: 12px;
 }
 
 .chartTitle { font-size: 14px; font-weight: 500; }
 .chartSubtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
 .chartTag {
   font-size: 11px;
   color: var(--text-muted);
   background: var(--surface2);
   padding: 3px 9px;
   border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .frameworkBars {
@@ -266,10 +271,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
 .fbName { font-size: 13px; font-weight: 500; }
-.fbVals { font-size: 11px; color: var(--text-muted); }
+.fbVals { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 .fbVals span { color: var(--text-light); }
 
 .fbTrack {
@@ -287,7 +293,7 @@
 
 .fbDesc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
 
-/* Charts */
+/* ── CHARTS ── */
 .chartsRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -301,6 +307,7 @@
   border-radius: var(--radius);
   padding: 24px;
   box-shadow: var(--shadow);
+  min-width: 0;
 }
 
 .noChart {
@@ -312,7 +319,7 @@
   font-size: 13px;
 }
 
-/* Insights */
+/* ── INSIGHTS ── */
 .sectionHeader {
   display: flex;
   align-items: center;
@@ -321,6 +328,7 @@
 }
 
 .sectionTitle { font-size: 15px; font-weight: 500; }
+
 .sectionAction {
   font-size: 12px;
   color: var(--accent);
@@ -376,7 +384,7 @@
   line-height: 1.5;
 }
 
-/* Goals */
+/* ── GOALS ── */
 .emptyGoals {
   background: var(--surface);
   border: 1.5px dashed var(--border);
@@ -388,6 +396,7 @@
   cursor: pointer;
   font-weight: 500;
   transition: background 0.15s;
+  margin-bottom: 20px;
 }
 
 .emptyGoals:hover { background: var(--accent-light); }
@@ -434,11 +443,51 @@
 
 .goalEta { font-size: 10px; color: var(--text-light); margin-top: 8px; }
 
-@media (max-width: 900px) {
-  .healthRow { grid-template-columns: 1fr; }
-  .kpiGrid { grid-template-columns: repeat(2, 1fr); }
-  .chartsRow { grid-template-columns: 1fr; }
-  .insightsRow { grid-template-columns: 1fr; }
-  .goalsGrid { grid-template-columns: repeat(2, 1fr); }
-  .frameworkBars { grid-template-columns: 1fr; }
+/* ══════════════════
+   MOBILE
+══════════════════ */
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 20px 16px 40px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+
+  .header h1 { font-size: 22px; }
+  .period { display: none; }
+
+  /* Health: stack vertically */
+  .healthRow {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .healthScore { font-size: 56px; }
+
+  /* KPI: 2 columns */
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: unset;
+  }
+
+  .kpiValue { font-size: 20px; }
+
+  /* Framework: stack */
+  .frameworkBars { grid-template-columns: 1fr; gap: 16px; }
+  .chartTag { display: none; }
+
+  /* Charts: stack */
+  .chartsRow { grid-template-columns: 1fr; gap: 14px; }
+
+  /* Insights: stack */
+  .insightsRow { grid-template-columns: 1fr; gap: 12px; }
+
+  /* Goals: 1 column */
+  .goalsGrid { grid-template-columns: 1fr; gap: 12px; }
+
+  .sectionTitle { font-size: 14px; }
 }
