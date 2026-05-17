@@ -8,6 +8,13 @@ import UpgradeModal from '../components/UpgradeModal'
 import Toast from '../components/Toast'
 import styles from './AppShell.module.css'
 
+const TABS = [
+  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'budget',    label: 'Budget',    icon: '💸' },
+  { id: 'goals',     label: 'Goals',     icon: '🎯' },
+  { id: 'reports',   label: 'Reports',   icon: '📋' },
+]
+
 export default function AppShell({ session }) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [showUpgrade, setShowUpgrade] = useState(false)
@@ -38,13 +45,6 @@ export default function AppShell({ session }) {
   const displayName = profile?.full_name || session.user.email.split('@')[0]
   const initials = displayName.slice(0, 2).toUpperCase()
 
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'budget', label: 'Budget' },
-    { id: 'goals', label: 'Savings Goals' },
-    { id: 'reports', label: 'Reports' },
-  ]
-
   const sharedProps = {
     session,
     showToast,
@@ -54,10 +54,11 @@ export default function AppShell({ session }) {
 
   return (
     <div className={styles.shell}>
+      {/* Top nav */}
       <nav className={styles.topnav}>
         <div className={styles.navLogo}>Clarity</div>
         <div className={styles.navTabs}>
-          {tabs.map(tab => (
+          {TABS.map(tab => (
             <button
               key={tab.id}
               className={`${styles.navTab} ${activeTab === tab.id ? styles.active : ''}`}
@@ -73,18 +74,31 @@ export default function AppShell({ session }) {
             <span className={styles.userName}>{displayName}</span>
             <span className={styles.badgeFree}>Free</span>
           </div>
-          <button className={styles.signOutBtn} onClick={handleSignOut} title="Sign out">
-            ↪
-          </button>
+          <button className={styles.signOutBtn} onClick={handleSignOut} title="Sign out">↪</button>
         </div>
       </nav>
 
+      {/* Page content */}
       <div className={styles.content}>
         {activeTab === 'dashboard' && <Dashboard {...sharedProps} />}
         {activeTab === 'budget'    && <Budget    {...sharedProps} />}
         {activeTab === 'goals'     && <Goals     {...sharedProps} />}
         {activeTab === 'reports'   && <Reports   {...sharedProps} />}
       </div>
+
+      {/* Mobile bottom nav */}
+      <nav className={styles.bottomNav}>
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            className={`${styles.bottomNavTab} ${activeTab === tab.id ? styles.active : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <span className={styles.bottomNavIcon}>{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
       {showUpgrade && (
         <UpgradeModal onClose={() => setShowUpgrade(false)} showToast={showToast} />
