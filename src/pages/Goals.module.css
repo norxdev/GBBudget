@@ -45,21 +45,16 @@
 
 .addGoalBtn:hover { background: #333; }
 
-/* Form */
 .formCard {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 28px;
+  padding: 24px;
   box-shadow: var(--shadow-md);
   margin-bottom: 24px;
 }
 
-.formCard h3 {
-  font-size: 16px;
-  font-weight: 500;
-  margin-bottom: 16px;
-}
+.formCard h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
 
 .emojiRow {
   display: flex;
@@ -149,7 +144,6 @@
 .saveGoalBtn:hover { background: #245840; }
 .saveGoalBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* Empty */
 .empty {
   background: var(--surface);
   border: 1.5px dashed var(--border);
@@ -173,7 +167,6 @@
   cursor: pointer;
 }
 
-/* Goals grid */
 .goalsGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -245,14 +238,9 @@
   margin-bottom: 8px;
 }
 
-.goalContrib {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
+.goalContrib { font-size: 12px; color: var(--text-muted); }
 .goalContrib strong { color: var(--text); }
 
-/* Add card */
 .addCard {
   background: transparent;
   border: 1.5px dashed var(--border);
@@ -272,7 +260,6 @@
 .addIcon { font-size: 24px; color: var(--text-muted); }
 .addCard p { font-size: 13px; color: var(--text-muted); font-weight: 500; }
 
-/* Premium */
 .premiumBanner {
   background: linear-gradient(135deg, #1A1916 0%, #2D3436 100%);
   border-radius: var(--radius);
@@ -317,8 +304,33 @@
 
 .upgradeBtn:hover { opacity: 0.9; }
 
-@media (max-width: 700px) {
-  .goalsGrid { grid-template-columns: 1fr; }
+@media (max-width: 768px) {
+  .page { padding: 20px 16px 40px; }
+
+  .header {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .header h1 { font-size: 22px; }
+  .addGoalBtn { width: 100%; text-align: center; }
+
   .formGrid { grid-template-columns: 1fr; }
-  .premiumBanner { flex-direction: column; }
+
+  .formActions { flex-direction: column; }
+  .cancelBtn, .saveGoalBtn { width: 100%; text-align: center; }
+
+  .goalsGrid { grid-template-columns: 1fr; gap: 12px; }
+
+  .addCard { min-height: 100px; flex-direction: row; }
+
+  .premiumBanner {
+    flex-direction: column;
+    padding: 24px 20px;
+    text-align: center;
+    gap: 16px;
+  }
+
+  .upgradeBtn { width: 100%; }
 }
