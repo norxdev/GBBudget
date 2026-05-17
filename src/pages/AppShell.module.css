@@ -42,6 +42,7 @@
   transition: all 0.15s;
   border: none;
   background: none;
+  white-space: nowrap;
 }
 
 .navTab:hover { color: var(--text); background: var(--surface2); }
@@ -121,4 +122,58 @@
 .content {
   flex: 1;
   overflow-y: auto;
+}
+
+.bottomNav { display: none; }
+
+@media (max-width: 768px) {
+  .topnav {
+    padding: 0 16px;
+    height: 56px;
+  }
+
+  .navTabs { display: none; }
+  .navLogo { margin-right: 0; }
+  .userName { display: none; }
+  .badgeFree { display: none; }
+
+  .bottomNav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bottomNavTab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    transition: color 0.15s;
+    padding: 8px 4px;
+  }
+
+  .bottomNavTab.active { color: var(--accent); }
+
+  .bottomNavIcon {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .content { padding-bottom: 72px; }
 }
