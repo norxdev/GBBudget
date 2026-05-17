@@ -13,9 +13,7 @@
   font-size: 14px;
 }
 
-.header {
-  margin-bottom: 28px;
-}
+.header { margin-bottom: 28px; }
 
 .header h1 {
   font-family: 'Instrument Serif', serif;
@@ -47,36 +45,21 @@
   box-shadow: 0 2px 12px rgba(45,106,79,0.1);
 }
 
-.reportCardLocked {
-  pointer-events: none;
-  opacity: 0.5;
-}
+.reportCardLocked { pointer-events: none; opacity: 0.5; }
 
 .reportIcon { font-size: 24px; margin-bottom: 12px; }
 
-.reportCard h4 {
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 5px;
-}
+.reportCard h4 { font-size: 14px; font-weight: 500; margin-bottom: 5px; }
 
-.reportCard p {
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
+.reportCard p { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 
 .downloadLink {
   margin-top: 14px;
   font-size: 12px;
   font-weight: 500;
   color: var(--accent);
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
-/* Premium */
 .premiumWrap { position: relative; }
 
 .premiumOverlay {
@@ -95,7 +78,6 @@
 }
 
 .premiumOverlay:hover { background: rgba(247,246,242,0.85); }
-
 .lockIcon { font-size: 20px; }
 .premiumOverlay p { font-size: 12px; font-weight: 500; color: var(--text-muted); }
 
@@ -108,7 +90,6 @@
   border-radius: 20px;
 }
 
-/* Preview table */
 .previewCard {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -124,6 +105,7 @@
   align-items: center;
   justify-content: space-between;
   background: var(--bg);
+  gap: 12px;
 }
 
 .previewTitle { font-size: 13px; font-weight: 500; }
@@ -141,15 +123,18 @@
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .downloadBtn:hover { background: #333; }
 
-.tableWrap { overflow-x: auto; }
+.tableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 .table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 500px;
 }
 
 .table th {
@@ -192,10 +177,26 @@
 .cat_expense { background: var(--accent2-light); color: var(--accent2); }
 .cat_savings { background: var(--blue-light); color: var(--blue); }
 
-@media (max-width: 800px) {
-  .reportsGrid { grid-template-columns: 1fr 1fr; }
+@media (max-width: 768px) {
+  .page { padding: 20px 16px 40px; }
+
+  .header h1 { font-size: 22px; }
+
+  .reportsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .reportCard { padding: 16px; }
+  .reportIcon { font-size: 20px; margin-bottom: 8px; }
+  .reportCard h4 { font-size: 13px; }
+  .reportCard p { font-size: 11px; }
+
+  .previewHeader { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .downloadBtn { width: 100%; justify-content: center; }
+  .previewTitle { font-size: 12px; }
 }
 
-@media (max-width: 500px) {
+@media (max-width: 480px) {
   .reportsGrid { grid-template-columns: 1fr; }
 }
