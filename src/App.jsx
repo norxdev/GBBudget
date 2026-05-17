@@ -8,13 +8,25 @@ export default function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setLoading(false)
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error || !session) {
+        supabase.auth.signOut()
+        setSession(null)
+      } else {
+        // Verify session is still valid against Supabase
+        supabase.auth.getUser().then(({ data: { user }, error }) => {
+          if (error || !user) {
+            supabase.auth.signOut()
+            setSession(null)
+          } else {
+            setSession(session)
+          }
+          setLoading(false)
+        })
+      }
+      if (error || !session) setLoading(false)
     })
 
-    // Listen for auth changes (login / logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
     })
