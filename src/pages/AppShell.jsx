@@ -4,15 +4,17 @@ import Dashboard from './Dashboard'
 import Budget from './Budget'
 import Goals from './Goals'
 import Reports from './Reports'
+import Affordability from './Affordability'
 import UpgradeModal from '../components/UpgradeModal'
 import Toast from '../components/Toast'
 import styles from './AppShell.module.css'
 
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'budget',    label: 'Budget',    icon: '💸' },
-  { id: 'goals',     label: 'Goals',     icon: '🎯' },
-  { id: 'reports',   label: 'Reports',   icon: '📋' },
+  { id: 'dashboard',    label: 'Dashboard',  icon: '📊' },
+  { id: 'budget',       label: 'Budget',     icon: '💸' },
+  { id: 'goals',        label: 'Goals',      icon: '🎯' },
+  { id: 'affordability',label: 'Afford?',    icon: '🤔' },
+  { id: 'reports',      label: 'Reports',    icon: '📋' },
 ]
 
 export default function AppShell({ session }) {
@@ -24,10 +26,7 @@ export default function AppShell({ session }) {
   useEffect(() => {
     async function loadProfile() {
       const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
+        .from('profiles').select('*').eq('id', session.user.id).single()
       if (data) setProfile(data)
     }
     loadProfile()
@@ -45,16 +44,10 @@ export default function AppShell({ session }) {
   const displayName = profile?.full_name || session.user.email.split('@')[0]
   const initials = displayName.slice(0, 2).toUpperCase()
 
-  const sharedProps = {
-    session,
-    showToast,
-    onUpgrade: () => setShowUpgrade(true),
-    onTabChange: setActiveTab,
-  }
+  const sharedProps = { session, showToast, onUpgrade: () => setShowUpgrade(true), onTabChange: setActiveTab }
 
   return (
     <div className={styles.shell}>
-      {/* Top nav */}
       <nav className={styles.topnav}>
         <div className={styles.navLogo}>Clarity</div>
         <div className={styles.navTabs}>
@@ -78,15 +71,14 @@ export default function AppShell({ session }) {
         </div>
       </nav>
 
-      {/* Page content */}
       <div className={styles.content}>
-        {activeTab === 'dashboard' && <Dashboard {...sharedProps} />}
-        {activeTab === 'budget'    && <Budget    {...sharedProps} />}
-        {activeTab === 'goals'     && <Goals     {...sharedProps} />}
-        {activeTab === 'reports'   && <Reports   {...sharedProps} />}
+        {activeTab === 'dashboard'     && <Dashboard     {...sharedProps} />}
+        {activeTab === 'budget'        && <Budget        {...sharedProps} />}
+        {activeTab === 'goals'         && <Goals         {...sharedProps} />}
+        {activeTab === 'affordability' && <Affordability {...sharedProps} />}
+        {activeTab === 'reports'       && <Reports       {...sharedProps} />}
       </div>
 
-      {/* Mobile bottom nav */}
       <nav className={styles.bottomNav}>
         {TABS.map(tab => (
           <button
@@ -100,10 +92,7 @@ export default function AppShell({ session }) {
         ))}
       </nav>
 
-      {showUpgrade && (
-        <UpgradeModal onClose={() => setShowUpgrade(false)} showToast={showToast} />
-      )}
-
+      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} showToast={showToast} />}
       {toast && <Toast message={toast} />}
     </div>
   )
