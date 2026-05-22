@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { getCurrentMonth, formatMonthLabel } from '../lib/months'
+import MonthSelector from '../components/MonthSelector'
 import styles from './Reports.module.css'
-
-const CURRENT_MONTH = new Date().toISOString().slice(0, 7) + '-01'
-const MONTH_LABEL = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
 function toCSV(rows) {
   return rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -18,51 +17,39 @@ function downloadCSV(content, filename) {
 }
 
 export default function Reports({ session, showToast, onUpgrade }) {
+  const [month, setMonth] = useState(getCurrentMonth())
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
+      setLoading(true)
       const { data } = await supabase
-        .from('budget_entries')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('month', CURRENT_MONTH)
-        .order('entry_type')
+        .from('budget_entries').select('*')
+        .eq('user_id', session.user.id).eq('month', month).order('entry_type')
       setEntries(data || [])
       setLoading(false)
     }
     load()
-  }, [session])
+  }, [session, month])
 
   const income = entries.filter(e => e.entry_type === 'income').reduce((s, e) => s + Number(e.amount), 0)
+  const monthLabel = formatMonthLabel(month)
+  const monthSlug = month.slice(0, 7)
 
   function handleBudgetExport() {
     const headers = ['Description', 'Category', 'Type', 'Frequency', 'Amount', '% of Income']
-    const rows = entries.map(e => [
-      e.description,
-      e.category,
-      e.entry_type,
-      e.frequency,
-      Number(e.amount).toFixed(2),
-      income > 0 ? ((Number(e.amount) / income) * 100).toFixed(1) + '%' : 'N/A'
-    ])
-    downloadCSV(toCSV([headers, ...rows]), `clarity-budget-${CURRENT_MONTH.slice(0, 7)}.csv`)
+    const rows = entries.map(e => [e.description, e.category, e.entry_type, e.frequency, Number(e.amount).toFixed(2), income > 0 ? ((Number(e.amount) / income) * 100).toFixed(1) + '%' : 'N/A'])
+    downloadCSV(toCSV([headers, ...rows]), `clarity-budget-${monthSlug}.csv`)
     showToast('CSV downloaded!')
   }
 
   function handleCategoryExport() {
     const cats = {}
-    entries.filter(e => e.entry_type === 'expense').forEach(e => {
-      cats[e.category] = (cats[e.category] || 0) + Number(e.amount)
-    })
+    entries.filter(e => e.entry_type === 'expense').forEach(e => { cats[e.category] = (cats[e.category] || 0) + Number(e.amount) })
     const headers = ['Category', 'Total Spent', '% of Income']
-    const rows = Object.entries(cats).map(([cat, total]) => [
-      cat,
-      '$' + total.toFixed(2),
-      income > 0 ? ((total / income) * 100).toFixed(1) + '%' : 'N/A'
-    ])
-    downloadCSV(toCSV([headers, ...rows]), `clarity-categories-${CURRENT_MONTH.slice(0, 7)}.csv`)
+    const rows = Object.entries(cats).map(([cat, total]) => [cat, '$' + total.toFixed(2), income > 0 ? ((total / income) * 100).toFixed(1) + '%' : 'N/A'])
+    downloadCSV(toCSV([headers, ...rows]), `clarity-categories-${monthSlug}.csv`)
     showToast('CSV downloaded!')
   }
 
@@ -73,32 +60,31 @@ export default function Reports({ session, showToast, onUpgrade }) {
       <div className={styles.header}>
         <div>
           <h1>Reports & Exports</h1>
-          <p>Download your financial data in useful formats</p>
+          <p>Download your financial data for {monthLabel}</p>
         </div>
+        <MonthSelector month={month} onChange={setMonth} />
       </div>
 
       <div className={styles.reportsGrid}>
-        {/* Free */}
         <div className={styles.reportCard} onClick={handleBudgetExport}>
           <div className={styles.reportIcon}>📋</div>
           <h4>Monthly Budget Export</h4>
-          <p>Your full income, expenses, and savings for {MONTH_LABEL} as a CSV.</p>
+          <p>Full income, expenses, and savings for {monthLabel} as a CSV.</p>
           <div className={styles.downloadLink}>⬇ Download CSV</div>
         </div>
 
         <div className={styles.reportCard} onClick={handleCategoryExport}>
           <div className={styles.reportIcon}>📊</div>
           <h4>Category Summary</h4>
-          <p>Total spend per category with % of income for {MONTH_LABEL}.</p>
+          <p>Total spend per category with % of income for {monthLabel}.</p>
           <div className={styles.downloadLink}>⬇ Download CSV</div>
         </div>
 
-        {/* Premium */}
         {[
           { icon: '📈', title: '6-Month Trend Report', desc: 'Income, spending, and savings changes over 6 months.' },
           { icon: '🎯', title: 'Goals Progress Report', desc: 'All savings goals with contributions and projected completion dates.' },
           { icon: '💡', title: 'Annual Financial Summary', desc: 'Year-at-a-glance with health score history and biggest wins.' },
-          { icon: '🏦', title: 'Net Worth Tracker', desc: 'Assets vs. liabilities over time. Track your wealth-building journey.' },
+          { icon: '🏦', title: 'Net Worth Tracker', desc: 'Assets vs. liabilities over time.' },
         ].map(r => (
           <div key={r.title} className={styles.premiumWrap}>
             <div className={`${styles.reportCard} ${styles.reportCardLocked}`}>
@@ -116,36 +102,24 @@ export default function Reports({ session, showToast, onUpgrade }) {
         ))}
       </div>
 
-      {/* Preview table */}
       <div className={styles.previewCard}>
         <div className={styles.previewHeader}>
-          <div className={styles.previewTitle}>Preview — Monthly Budget Export ({MONTH_LABEL})</div>
+          <div className={styles.previewTitle}>Preview — {monthLabel}</div>
           <button className={styles.downloadBtn} onClick={handleBudgetExport}>⬇ Download CSV</button>
         </div>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
-              <tr>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Type</th>
-                <th>Frequency</th>
-                <th>Amount</th>
-                <th>% of Income</th>
-              </tr>
+              <tr><th>Description</th><th>Category</th><th>Type</th><th>Frequency</th><th>Amount</th><th>% of Income</th></tr>
             </thead>
             <tbody>
               {entries.length === 0 ? (
-                <tr><td colSpan={6} className={styles.emptyRow}>No data for this month yet. Add entries in the Budget tab.</td></tr>
+                <tr><td colSpan={6} className={styles.emptyRow}>No data for this month. Add entries in the Budget tab.</td></tr>
               ) : (
                 entries.map(e => (
                   <tr key={e.id}>
                     <td>{e.description}</td>
-                    <td>
-                      <span className={`${styles.catPill} ${styles['cat_' + e.entry_type]}`}>
-                        {e.category}
-                      </span>
-                    </td>
+                    <td><span className={`${styles.catPill} ${styles['cat_' + e.entry_type]}`}>{e.category}</span></td>
                     <td style={{ textTransform: 'capitalize' }}>{e.entry_type}</td>
                     <td style={{ textTransform: 'capitalize' }}>{e.frequency}</td>
                     <td>${Number(e.amount).toLocaleString()}</td>
