@@ -177,13 +177,13 @@ export default function Profile({ session, profile, onSignOut, showToast }) {
                   <div className={styles.pricingToggle}>
                     <button className={billing === 'monthly' ? styles.toggleActive : ''} onClick={() => setBilling('monthly')}>Monthly</button>
                     <button className={billing === 'annual' ? styles.toggleActive : ''} onClick={() => setBilling('annual')}>
-                      Annual <span className={styles.saveBadge}>Save 25%</span>
+                      Annual <span className={styles.saveBadge}>Save 35%</span>
                     </button>
                   </div>
 
                   <div className={styles.priceDisplay}>
-                    <span className={styles.priceNum}>{billing === 'monthly' ? '$9' : '$7'}</span>
-                    <span className={styles.pricePer}>{billing === 'monthly' ? '/month' : '/month · billed $81/year'}</span>
+                    <span className={styles.priceNum}>{billing === 'monthly' ? '$4.99' : '$39'}</span>
+                    <span className={styles.pricePer}>{billing === 'monthly' ? '/month' : '/year · just $3.25/month'}</span>
                   </div>
 
                   <ul className={styles.featureList}>
