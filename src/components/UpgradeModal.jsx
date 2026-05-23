@@ -49,7 +49,7 @@ export default function UpgradeModal({ onClose, showToast }) {
         >
           Get Premium →
         </button>
-        <div className={styles.note}>Cancel anytime · 7-day free trial · No credit card required</div>
+        <div className={styles.note}>Cancel anytime · 7-day free trial</div>
       </div>
     </div>
   )
