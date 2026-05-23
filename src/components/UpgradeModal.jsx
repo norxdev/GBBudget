@@ -18,17 +18,16 @@ export default function UpgradeModal({ onClose, showToast }) {
         <div className={styles.toggle}>
           <button className={billing === 'monthly' ? styles.active : ''} onClick={() => setBilling('monthly')}>Monthly</button>
           <button className={billing === 'annual' ? styles.active : ''} onClick={() => setBilling('annual')}>
-            Annual <span className={styles.saveBadge}>Save 25%</span>
+            Annual <span className={styles.saveBadge}>Save 35%</span>
           </button>
         </div>
 
         <div className={styles.price}>
-          <span className={styles.amount}>{billing === 'monthly' ? '$9' : '$7'}</span>
+          <span className={styles.amount}>{billing === 'monthly' ? '$4.99' : '$39'}</span>
           <span className={styles.period}>
-            {billing === 'monthly' ? '/month' : '/month · billed $81/year'}
+            {billing === 'monthly' ? '/month' : '/year · just $3.25/month'}
           </span>
         </div>
-        {billing === 'annual' && <div className={styles.saving}>You save $27/year</div>}
 
         <ul className={styles.features}>
           {[
