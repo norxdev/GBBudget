@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { getCurrentMonth, formatMonthLabel, getLastNMonths, formatMonthShort } from '../lib/months'
 import MonthSelector from '../components/MonthSelector'
+import { buildHealthShareUrl } from '../lib/share'
+import ShareCard from '../components/ShareCard'
 import { Doughnut, Bar } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
   ArcElement, Tooltip, Legend,
   CategoryScale, LinearScale, BarElement
 } from 'chart.js'
+import { buildHealthShareUrl } from '../lib/share'
+import ShareCard from '../components/ShareCard'
 import styles from './Dashboard.module.css'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement)
@@ -44,6 +48,7 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
   const [entries, setEntries] = useState([])
   const [goals, setGoals] = useState([])
   const [historyData, setHistoryData] = useState([])
+  const [showHealthShare, setShowHealthShare] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -155,6 +160,22 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
               </div>
             ))}
           </div>
+
+          <button
+            className={styles.shareHealthBtn}
+            onClick={() => setShowHealthShare(s => !s)}
+          >
+            {showHealthShare ? 'Hide' : 'Share your score'}
+          </button>
+          {showHealthShare && (
+            <div style={{marginTop: '12px'}}>
+              <ShareCard
+                url={buildHealthShareUrl(score, grade, savingsRate)}
+                twitterText={`My financial health score is ${score}/100 (${grade}) on Clarity. Check yours:`}
+                whatsappText={`My Clarity financial health score: ${score}/100 — ${grade}. See yours:`}
+              />
+            </div>
+          )}
         </div>
 
         <div className={styles.kpiGrid}>
@@ -280,5 +301,3 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
         </div>
       )}
     </div>
-  )
-}
