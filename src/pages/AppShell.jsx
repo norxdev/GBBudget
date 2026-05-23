@@ -5,31 +5,37 @@ import Budget from './Budget'
 import Goals from './Goals'
 import Reports from './Reports'
 import Affordability from './Affordability'
+import Profile from './Profile'
 import UpgradeModal from '../components/UpgradeModal'
 import Toast from '../components/Toast'
+import GuestBanner from '../components/GuestBanner'
+import SignUpPrompt from '../components/SignUpPrompt'
 import styles from './AppShell.module.css'
 
 const TABS = [
-  { id: 'dashboard',    label: 'Dashboard',  icon: '📊' },
-  { id: 'budget',       label: 'Budget',     icon: '💸' },
-  { id: 'goals',        label: 'Goals',      icon: '🎯' },
-  { id: 'affordability',label: 'Afford?',    icon: '🤔' },
-  { id: 'reports',      label: 'Reports',    icon: '📋' },
+  { id: 'dashboard',     label: 'Dashboard',    icon: '◈' },
+  { id: 'budget',        label: 'Budget',       icon: '≋' },
+  { id: 'goals',         label: 'Goals',        icon: '◎' },
+  { id: 'affordability', label: 'Affordability', icon: '?' },
+  { id: 'reports',       label: 'Reports',      icon: '↓' },
 ]
 
-export default function AppShell({ session }) {
-  const [activeTab, setActiveTab] = useState('dashboard')
+export default function AppShell({ session, isGuest, onSignOut, initialShareParams }) {
+  const [activeTab, setActiveTab] = useState(
+    initialShareParams?.tool === 'afford' ? 'affordability' : 'dashboard'
+  )
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const [showSignUpPrompt, setShowSignUpPrompt] = useState(false)
+  const [signUpPromptReason, setSignUpPromptReason] = useState('')
   const [toast, setToast] = useState('')
   const [profile, setProfile] = useState(null)
 
   useEffect(() => {
-    async function loadProfile() {
-      const { data } = await supabase
-        .from('profiles').select('*').eq('id', session.user.id).single()
-      if (data) setProfile(data)
+    if (session) {
+      supabase.from('profiles').select('*').eq('id', session.user.id).single()
+        .then(({ data }) => { if (data) setProfile(data) })
     }
-    loadProfile()
   }, [session])
 
   function showToast(msg) {
@@ -37,62 +43,133 @@ export default function AppShell({ session }) {
     setTimeout(() => setToast(''), 3000)
   }
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
+  function requireAuth(reason, callback) {
+    if (isGuest) {
+      setSignUpPromptReason(reason)
+      setShowSignUpPrompt(true)
+      return false
+    }
+    callback?.()
+    return true
   }
 
-  const displayName = profile?.full_name || session.user.email.split('@')[0]
-  const initials = displayName.slice(0, 2).toUpperCase()
+  function handleTabChange(tab) {
+    if (isGuest && tab === 'reports') {
+      setSignUpPromptReason('Reports are available to registered users. Create a free account to access monthly exports, category summaries, and more.')
+      setShowSignUpPrompt(true)
+      return
+    }
+    setActiveTab(tab)
+    setShowProfile(false)
+  }
 
-  const sharedProps = { session, showToast, onUpgrade: () => setShowUpgrade(true), onTabChange: setActiveTab }
+  function handleSignOut() {
+    if (session) supabase.auth.signOut()
+    else onSignOut?.()
+  }
+
+  function handleSignUpFromPrompt() {
+    setShowSignUpPrompt(false)
+    handleSignOut() // returns to login page
+  }
+
+  const displayName = isGuest ? 'Guest' : (profile?.full_name || session?.user?.email?.split('@')[0] || 'User')
+  const initials = isGuest ? 'G' : displayName.slice(0, 2).toUpperCase()
+
+  const sharedProps = {
+    session,
+    isGuest,
+    showToast,
+    onUpgrade: () => setShowUpgrade(true),
+    onTabChange: handleTabChange,
+    requireAuth,
+    initialShareParams,
+  }
 
   return (
     <div className={styles.shell}>
+      {/* Top nav */}
       <nav className={styles.topnav}>
         <div className={styles.navLogo}>Clarity</div>
         <div className={styles.navTabs}>
           {TABS.map(tab => (
             <button
               key={tab.id}
-              className={`${styles.navTab} ${activeTab === tab.id ? styles.active : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              className={`${styles.navTab} ${activeTab === tab.id && !showProfile ? styles.active : ''}`}
+              onClick={() => handleTabChange(tab.id)}
             >
               {tab.label}
+              {isGuest && tab.id === 'reports' && <span className={styles.lockDot} />}
             </button>
           ))}
         </div>
         <div className={styles.navRight}>
-          <div className={styles.navUser} onClick={() => setShowUpgrade(true)}>
+          <div
+            className={`${styles.navUser} ${showProfile ? styles.navUserActive : ''}`}
+            onClick={() => { setShowProfile(p => !p); setActiveTab('') }}
+          >
             <div className={styles.avatar}>{initials}</div>
             <span className={styles.userName}>{displayName}</span>
-            <span className={styles.badgeFree}>Free</span>
+            {isGuest
+              ? <span className={styles.badgeGuest}>Guest</span>
+              : <span className={styles.badgeFree}>{profile?.plan === 'premium' ? 'Pro' : 'Free'}</span>
+            }
           </div>
-          <button className={styles.signOutBtn} onClick={handleSignOut} title="Sign out">↪</button>
         </div>
       </nav>
 
+      {/* Guest banner */}
+      {isGuest && (
+        <GuestBanner onSignUp={handleSignUpFromPrompt} />
+      )}
+
+      {/* Page content */}
       <div className={styles.content}>
-        {activeTab === 'dashboard'     && <Dashboard     {...sharedProps} />}
-        {activeTab === 'budget'        && <Budget        {...sharedProps} />}
-        {activeTab === 'goals'         && <Goals         {...sharedProps} />}
-        {activeTab === 'affordability' && <Affordability {...sharedProps} />}
-        {activeTab === 'reports'       && <Reports       {...sharedProps} />}
+        {showProfile && session && (
+          <Profile session={session} profile={profile} onSignOut={handleSignOut} showToast={showToast} />
+        )}
+        {showProfile && isGuest && (
+          <div style={{ padding: '60px 28px', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>Create an account to manage your profile.</p>
+            <button onClick={handleSignUpFromPrompt} style={{ background: 'var(--text)', color: 'white', border: 'none', borderRadius: '10px', padding: '12px 24px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Create free account</button>
+          </div>
+        )}
+        {!showProfile && activeTab === 'dashboard'     && <Dashboard     {...sharedProps} />}
+        {!showProfile && activeTab === 'budget'        && <Budget        {...sharedProps} />}
+        {!showProfile && activeTab === 'goals'         && <Goals         {...sharedProps} />}
+        {!showProfile && activeTab === 'affordability' && <Affordability {...sharedProps} />}
+        {!showProfile && activeTab === 'reports'       && !isGuest && <Reports {...sharedProps} />}
       </div>
 
+      {/* Mobile bottom nav */}
       <nav className={styles.bottomNav}>
         {TABS.map(tab => (
           <button
             key={tab.id}
-            className={`${styles.bottomNavTab} ${activeTab === tab.id ? styles.active : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            className={`${styles.bottomNavTab} ${activeTab === tab.id && !showProfile ? styles.active : ''}`}
+            onClick={() => handleTabChange(tab.id)}
           >
             <span className={styles.bottomNavIcon}>{tab.icon}</span>
             {tab.label}
           </button>
         ))}
+        <button
+          className={`${styles.bottomNavTab} ${showProfile ? styles.active : ''}`}
+          onClick={() => { setShowProfile(p => !p); setActiveTab('') }}
+        >
+          <span className={styles.bottomNavIcon}>{initials}</span>
+          Profile
+        </button>
       </nav>
 
       {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} showToast={showToast} />}
+      {showSignUpPrompt && (
+        <SignUpPrompt
+          reason={signUpPromptReason}
+          onSignUp={handleSignUpFromPrompt}
+          onClose={() => setShowSignUpPrompt(false)}
+        />
+      )}
       {toast && <Toast message={toast} />}
     </div>
   )
