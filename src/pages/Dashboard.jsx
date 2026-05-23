@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { getCurrentMonth, formatMonthLabel, getLastNMonths, formatMonthShort } from '../lib/months'
+import { getAllBudgetEntries } from '../lib/localStorage'
 import MonthSelector from '../components/MonthSelector'
 import { buildHealthShareUrl } from '../lib/share'
 import ShareCard from '../components/ShareCard'
@@ -10,8 +11,6 @@ import {
   ArcElement, Tooltip, Legend,
   CategoryScale, LinearScale, BarElement
 } from 'chart.js'
-import { buildHealthShareUrl } from '../lib/share'
-import ShareCard from '../components/ShareCard'
 import styles from './Dashboard.module.css'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement)
@@ -43,41 +42,52 @@ const CAT_COLORS = {
   Subscriptions: '#E76F51', Dining: '#E67E22', Shopping: '#C0392B', Other: '#95A5A6'
 }
 
-export default function Dashboard({ session, onUpgrade, onTabChange }) {
+export default function Dashboard({ session, isGuest, onUpgrade, onTabChange, initialShareParams }) {
   const [month, setMonth] = useState(getCurrentMonth())
   const [entries, setEntries] = useState([])
   const [goals, setGoals] = useState([])
   const [historyData, setHistoryData] = useState([])
-  const [showHealthShare, setShowHealthShare] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [showHealthShare, setShowHealthShare] = useState(false)
 
   useEffect(() => {
     async function load() {
       setLoading(true)
       const last6 = getLastNMonths(6)
 
-      const [{ data: entriesData }, { data: goalsData }, { data: histData }] = await Promise.all([
-        supabase.from('budget_entries').select('*').eq('user_id', session.user.id).eq('month', month),
-        supabase.from('savings_goals').select('*').eq('user_id', session.user.id).limit(3),
-        supabase.from('budget_entries').select('*').eq('user_id', session.user.id).in('month', last6)
-      ])
-
-      setEntries(entriesData || [])
-      setGoals(goalsData || [])
-
-      // Build 6-month history for bar chart
-      const byMonth = {}
-      last6.forEach(m => { byMonth[m] = { income: 0, expenses: 0 } })
-      ;(histData || []).forEach(e => {
-        if (!byMonth[e.month]) return
-        if (e.entry_type === 'income') byMonth[e.month].income += Number(e.amount)
-        if (e.entry_type === 'expense') byMonth[e.month].expenses += Number(e.amount)
-      })
-      setHistoryData(last6.map(m => ({ month: m, ...byMonth[m] })))
+      if (isGuest) {
+        const all = getAllBudgetEntries()
+        setEntries(all.filter(e => e.month === month))
+        setGoals([])
+        const byMonth = {}
+        last6.forEach(m => { byMonth[m] = { income: 0, expenses: 0 } })
+        all.forEach(e => {
+          if (!byMonth[e.month]) return
+          if (e.entry_type === 'income') byMonth[e.month].income += Number(e.amount)
+          if (e.entry_type === 'expense') byMonth[e.month].expenses += Number(e.amount)
+        })
+        setHistoryData(last6.map(m => ({ month: m, ...byMonth[m] })))
+      } else {
+        const [{ data: entriesData }, { data: goalsData }, { data: histData }] = await Promise.all([
+          supabase.from('budget_entries').select('*').eq('user_id', session.user.id).eq('month', month),
+          supabase.from('savings_goals').select('*').eq('user_id', session.user.id).limit(3),
+          supabase.from('budget_entries').select('*').eq('user_id', session.user.id).in('month', last6)
+        ])
+        setEntries(entriesData || [])
+        setGoals(goalsData || [])
+        const byMonth = {}
+        last6.forEach(m => { byMonth[m] = { income: 0, expenses: 0 } })
+        ;(histData || []).forEach(e => {
+          if (!byMonth[e.month]) return
+          if (e.entry_type === 'income') byMonth[e.month].income += Number(e.amount)
+          if (e.entry_type === 'expense') byMonth[e.month].expenses += Number(e.amount)
+        })
+        setHistoryData(last6.map(m => ({ month: m, ...byMonth[m] })))
+      }
       setLoading(false)
     }
     load()
-  }, [session, month])
+  }, [session, month, isGuest])
 
   const income = entries.filter(e => e.entry_type === 'income').reduce((s, e) => s + Number(e.amount), 0)
   const expenses = entries.filter(e => e.entry_type === 'expense')
@@ -106,7 +116,13 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
   }
 
   const chartOptions = { responsive: true, plugins: { legend: { labels: { font: { family: 'DM Sans', size: 11 }, usePointStyle: true, pointStyleWidth: 8, padding: 12 } } } }
-  const barOptions = { ...chartOptions, scales: { x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 11 } } }, y: { grid: { color: '#F0EFE9' }, ticks: { font: { family: 'DM Sans', size: 11 }, callback: v => '$' + (v / 1000).toFixed(0) + 'k' } } } }
+  const barOptions = {
+    ...chartOptions,
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 11 } } },
+      y: { grid: { color: '#F0EFE9' }, ticks: { font: { family: 'DM Sans', size: 11 }, callback: v => '$' + (v / 1000).toFixed(0) + 'k' } }
+    }
+  }
 
   const hasData = entries.length > 0
   const diningEntry = expenses.find(e => e.category === 'Dining')
@@ -118,7 +134,7 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
     <div className={styles.dashboard}>
       <div className={styles.header}>
         <div>
-          <h1>Dashboard 👋</h1>
+          <h1>Dashboard</h1>
           <p>Your financial snapshot</p>
         </div>
         <MonthSelector month={month} onChange={setMonth} />
@@ -126,11 +142,8 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
 
       {!hasData && (
         <div className={styles.emptyBanner}>
-          <span>📊</span>
-          <div>
-            <strong>No budget data for {formatMonthLabel(month)}.</strong>
-            <span> Head to the <button onClick={() => onTabChange('budget')}>Budget tab</button> to add your income and expenses.</span>
-          </div>
+          <span>No budget data for {formatMonthLabel(month)}.</span>
+          <button onClick={() => onTabChange('budget')}>Add budget data</button>
         </div>
       )}
 
@@ -141,10 +154,16 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
           <div className={styles.healthScore}>{score}</div>
           <div className={styles.healthGrade}>
             <span className={styles.gradeBadge}>{grade}</span>
-            <span className={styles.gradeDesc}>{score >= 80 ? 'Great shape!' : score >= 60 ? 'Good — room to grow' : 'Needs attention'}</span>
+            <span className={styles.gradeDesc}>
+              {score >= 80 ? 'Great shape!' : score >= 60 ? 'Good — room to grow' : 'Needs attention'}
+            </span>
           </div>
           <div className={styles.healthDesc}>
-            {score >= 80 ? "You're managing your budget excellently. Keep it up!" : score >= 60 ? "You're managing well. Focus on savings and discretionary spend to improve." : "Let's work on getting your budget balanced. Start with tracking all expenses."}
+            {score >= 80
+              ? "You're managing your budget excellently. Keep it up!"
+              : score >= 60
+              ? "You're managing well. Focus on savings and discretionary spend to improve."
+              : "Let's work on getting your budget balanced. Start with tracking all expenses."}
           </div>
           <div className={styles.subScores}>
             {[
@@ -160,15 +179,11 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
               </div>
             ))}
           </div>
-
-          <button
-            className={styles.shareHealthBtn}
-            onClick={() => setShowHealthShare(s => !s)}
-          >
-            {showHealthShare ? 'Hide' : 'Share your score'}
+          <button className={styles.shareHealthBtn} onClick={() => setShowHealthShare(s => !s)}>
+            {showHealthShare ? 'Hide share options' : 'Share your score'}
           </button>
           {showHealthShare && (
-            <div style={{marginTop: '12px'}}>
+            <div style={{ marginTop: '12px' }}>
               <ShareCard
                 url={buildHealthShareUrl(score, grade, savingsRate)}
                 twitterText={`My financial health score is ${score}/100 (${grade}) on Clarity. Check yours:`}
@@ -180,15 +195,17 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
 
         <div className={styles.kpiGrid}>
           {[
-            { icon: '💰', label: 'Monthly Income', value: '$' + income.toLocaleString(), color: '#D8EDE4' },
-            { icon: '💸', label: 'Total Expenses', value: '$' + totalExpenses.toLocaleString(), color: '#FDEEE9' },
-            { icon: '🏦', label: 'Monthly Savings', value: '$' + savings.toLocaleString(), color: '#D8EDE4' },
-            { icon: '📊', label: 'Savings Rate', value: income > 0 ? Math.round(savings / income * 100) + '%' : '0%', color: '#FBF3DC' },
-            { icon: '💵', label: 'Remaining', value: '$' + remaining.toLocaleString(), color: remaining >= 0 ? '#D8EDE4' : '#FDECEA' },
-            { icon: '🎯', label: 'Active Goals', value: goals.length + ' goals', color: '#D6EAF8' },
+            { icon: '↑', label: 'Monthly Income', value: '$' + income.toLocaleString(), color: '#D8EDE4' },
+            { icon: '↓', label: 'Total Expenses', value: '$' + totalExpenses.toLocaleString(), color: '#FDEEE9' },
+            { icon: 'S', label: 'Monthly Savings', value: '$' + savings.toLocaleString(), color: '#D8EDE4' },
+            { icon: '%', label: 'Savings Rate', value: income > 0 ? Math.round(savings / income * 100) + '%' : '0%', color: '#FBF3DC' },
+            { icon: '=', label: 'Remaining', value: '$' + remaining.toLocaleString(), color: remaining >= 0 ? '#D8EDE4' : '#FDECEA' },
+            { icon: 'G', label: 'Active Goals', value: goals.length + ' goals', color: '#D6EAF8' },
           ].map(kpi => (
             <div key={kpi.label} className={styles.kpiCard}>
-              <div className={styles.kpiTop}><div className={styles.kpiIcon} style={{ background: kpi.color }}>{kpi.icon}</div></div>
+              <div className={styles.kpiTop}>
+                <div className={styles.kpiIcon} style={{ background: kpi.color }}>{kpi.icon}</div>
+              </div>
               <div className={styles.kpiValue}>{kpi.value}</div>
               <div className={styles.kpiLabel}>{kpi.label}</div>
             </div>
@@ -207,17 +224,21 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
         </div>
         <div className={styles.frameworkBars}>
           {[
-            { icon: '🏠', name: 'Needs', actual: needsRatio, target: 50, color: 'var(--accent)', desc: 'Housing, food, transport, healthcare' },
-            { icon: '🎉', name: 'Wants', actual: wantsRatio, target: 30, color: 'var(--blue)', desc: 'Entertainment, dining, subscriptions' },
-            { icon: '💰', name: 'Savings', actual: savingsRate, target: 20, color: 'var(--amber)', desc: 'All savings and goal contributions' },
+            { name: 'Needs', actual: needsRatio, target: 50, color: 'var(--accent)', desc: 'Housing, food, transport, healthcare' },
+            { name: 'Wants', actual: wantsRatio, target: 30, color: 'var(--blue)', desc: 'Entertainment, dining, subscriptions' },
+            { name: 'Savings', actual: savingsRate, target: 20, color: 'var(--amber)', desc: 'All savings and goal contributions' },
           ].map(fb => (
             <div key={fb.name} className={styles.fbItem}>
               <div className={styles.fbLabel}>
-                <span className={styles.fbName}>{fb.icon} {fb.name}</span>
+                <span className={styles.fbName}>{fb.name}</span>
                 <span className={styles.fbVals}>{fb.actual}% <span>/ {fb.target}% target</span></span>
               </div>
-              <div className={styles.fbTrack}><div className={styles.fbFill} style={{ width: Math.min(fb.actual, 100) + '%', background: fb.color }} /></div>
-              <div className={styles.fbDesc}>{fb.actual <= fb.target ? '✅ Within target — great discipline!' : `⚠️ ${fb.actual - fb.target}% over target`} · {fb.desc}</div>
+              <div className={styles.fbTrack}>
+                <div className={styles.fbFill} style={{ width: Math.min(fb.actual, 100) + '%', background: fb.color }} />
+              </div>
+              <div className={styles.fbDesc}>
+                {fb.actual <= fb.target ? 'Within target' : `${fb.actual - fb.target}% over target`} · {fb.desc}
+              </div>
             </div>
           ))}
         </div>
@@ -227,61 +248,91 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
       <div className={styles.chartsRow}>
         <div className={styles.chartCard}>
           <div className={styles.chartHeader}>
-            <div><div className={styles.chartTitle}>Spending by Category</div><div className={styles.chartSubtitle}>{formatMonthLabel(month)}</div></div>
+            <div>
+              <div className={styles.chartTitle}>Spending by Category</div>
+              <div className={styles.chartSubtitle}>{formatMonthLabel(month)}</div>
+            </div>
           </div>
-          {catLabels.length > 0 ? <Doughnut data={donutData} options={{ ...chartOptions, cutout: '68%' }} /> : <div className={styles.noChart}>Add expenses to see breakdown</div>}
+          {catLabels.length > 0
+            ? <Doughnut data={donutData} options={{ ...chartOptions, cutout: '68%' }} />
+            : <div className={styles.noChart}>Add expenses to see breakdown</div>}
         </div>
         <div className={styles.chartCard}>
           <div className={styles.chartHeader}>
-            <div><div className={styles.chartTitle}>Income vs Expenses</div><div className={styles.chartSubtitle}>Last 6 months</div></div>
+            <div>
+              <div className={styles.chartTitle}>Income vs Expenses</div>
+              <div className={styles.chartSubtitle}>Last 6 months</div>
+            </div>
           </div>
           <Bar data={barData} options={barOptions} />
         </div>
       </div>
 
       {/* Insights */}
-      <div className={styles.sectionHeader}><div className={styles.sectionTitle}>💡 Insights & Recommendations</div></div>
+      <div className={styles.sectionHeader}>
+        <div className={styles.sectionTitle}>Insights & Recommendations</div>
+      </div>
       <div className={styles.insightsRow}>
         {diningEntry && Number(diningEntry.amount) > 400 ? (
           <div className={styles.insightCard}>
-            <div className={styles.insightType} style={{ color: 'var(--red)' }}><div className={styles.insightDot} style={{ background: 'var(--red)' }} />Needs Attention</div>
+            <div className={styles.insightType} style={{ color: 'var(--red)' }}>
+              <div className={styles.insightDot} style={{ background: 'var(--red)' }} />Needs Attention
+            </div>
             <h4>Dining spend is high</h4>
             <p>You've spent ${Number(diningEntry.amount).toLocaleString()} on dining this month. Consider setting a monthly limit.</p>
           </div>
         ) : (
           <div className={styles.insightCard}>
-            <div className={styles.insightType} style={{ color: 'var(--accent)' }}><div className={styles.insightDot} style={{ background: 'var(--accent)' }} />Doing Well</div>
-            <h4>Dining spend is in check 🎉</h4>
+            <div className={styles.insightType} style={{ color: 'var(--accent)' }}>
+              <div className={styles.insightDot} style={{ background: 'var(--accent)' }} />Doing Well
+            </div>
+            <h4>Dining spend is in check</h4>
             <p>Your dining expenses look reasonable this month. Keep it up!</p>
           </div>
         )}
+
         {subTotal > 100 ? (
           <div className={styles.insightCard}>
-            <div className={styles.insightType} style={{ color: 'var(--amber)' }}><div className={styles.insightDot} style={{ background: 'var(--amber)' }} />Opportunity</div>
+            <div className={styles.insightType} style={{ color: 'var(--amber)' }}>
+              <div className={styles.insightDot} style={{ background: 'var(--amber)' }} />Opportunity
+            </div>
             <h4>Review your subscriptions</h4>
             <p>You're spending ${subTotal}/mo on subscriptions. Auditing these could free up cash for savings goals.</p>
           </div>
         ) : (
           <div className={styles.insightCard}>
-            <div className={styles.insightType} style={{ color: 'var(--accent)' }}><div className={styles.insightDot} style={{ background: 'var(--accent)' }} />Doing Well</div>
+            <div className={styles.insightType} style={{ color: 'var(--accent)' }}>
+              <div className={styles.insightDot} style={{ background: 'var(--accent)' }} />Doing Well
+            </div>
             <h4>Subscriptions are lean</h4>
             <p>Your subscription spend is well managed. That's money that can go toward your goals.</p>
           </div>
         )}
+
         <div className={styles.insightCard}>
-          <div className={styles.insightType} style={{ color: savingsRate >= 20 ? 'var(--accent)' : 'var(--amber)' }}><div className={styles.insightDot} style={{ background: savingsRate >= 20 ? 'var(--accent)' : 'var(--amber)' }} />{savingsRate >= 20 ? 'Doing Well' : 'Opportunity'}</div>
-          <h4>{savingsRate >= 20 ? 'Savings rate above target 🎉' : 'Boost your savings rate'}</h4>
-          <p>{savingsRate >= 20 ? `At ${savingsRate}%, you're saving above the recommended 20%. Excellent!` : `You're saving ${savingsRate}% of income. The goal is 20%. Try reducing one discretionary category.`}</p>
+          <div className={styles.insightType} style={{ color: savingsRate >= 20 ? 'var(--accent)' : 'var(--amber)' }}>
+            <div className={styles.insightDot} style={{ background: savingsRate >= 20 ? 'var(--accent)' : 'var(--amber)' }} />
+            {savingsRate >= 20 ? 'Doing Well' : 'Opportunity'}
+          </div>
+          <h4>{savingsRate >= 20 ? 'Savings rate above target' : 'Boost your savings rate'}</h4>
+          <p>
+            {savingsRate >= 20
+              ? `At ${savingsRate}%, you're saving above the recommended 20%. Excellent!`
+              : `You're saving ${savingsRate}% of income. The goal is 20%. Try reducing one discretionary category.`}
+          </p>
         </div>
       </div>
 
       {/* Goals preview */}
       <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitle}>🎯 Savings Goals</div>
-        <div className={styles.sectionAction} onClick={() => onTabChange('goals')}>View all →</div>
+        <div className={styles.sectionTitle}>Savings Goals</div>
+        <div className={styles.sectionAction} onClick={() => onTabChange('goals')}>View all</div>
       </div>
+
       {goals.length === 0 ? (
-        <div className={styles.emptyGoals} onClick={() => onTabChange('goals')}>+ Add your first savings goal →</div>
+        <div className={styles.emptyGoals} onClick={() => onTabChange('goals')}>
+          Add your first savings goal
+        </div>
       ) : (
         <div className={styles.goalsGrid}>
           {goals.map(g => {
@@ -290,10 +341,15 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
             const months = g.monthly_contribution > 0 ? Math.ceil(rem / g.monthly_contribution) : null
             return (
               <div key={g.id} className={styles.goalCard}>
-                <div className={styles.goalTop}><div className={styles.goalIcon}>{g.emoji || '🎯'}</div><div className={styles.goalPct}>{pct}%</div></div>
+                <div className={styles.goalTop}>
+                  <div className={styles.goalIcon}>{g.emoji || '◎'}</div>
+                  <div className={styles.goalPct}>{pct}%</div>
+                </div>
                 <div className={styles.goalName}>{g.name}</div>
                 <div className={styles.goalAmounts}>${Number(g.current_amount).toLocaleString()} of ${Number(g.target_amount).toLocaleString()}</div>
-                <div className={styles.goalBar}><div className={styles.goalFill} style={{ width: pct + '%' }} /></div>
+                <div className={styles.goalBar}>
+                  <div className={styles.goalFill} style={{ width: pct + '%' }} />
+                </div>
                 {months && <div className={styles.goalEta}>~{months} months to completion</div>}
               </div>
             )
@@ -301,3 +357,5 @@ export default function Dashboard({ session, onUpgrade, onTabChange }) {
         </div>
       )}
     </div>
+  )
+}
