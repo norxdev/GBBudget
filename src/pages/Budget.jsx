@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { getBudgetEntries, saveBudgetEntries, deleteBudgetEntry } from '../lib/localStorage'
 import { getCurrentMonth, formatMonthLabel, isFutureMonth } from '../lib/months'
 import MonthSelector from '../components/MonthSelector'
 import styles from './Budget.module.css'
@@ -13,14 +14,11 @@ function emptyRow(type) {
     id: crypto.randomUUID(),
     description: '',
     category: type === 'income' ? 'Employment' : type === 'expense' ? 'Housing' : 'Emergency',
-    entry_type: type,
-    frequency: 'recurring',
-    amount: '',
-    isNew: true
+    entry_type: type, frequency: 'recurring', amount: '', isNew: true
   }
 }
 
-export default function Budget({ session, showToast }) {
+export default function Budget({ session, isGuest, showToast }) {
   const [month, setMonth] = useState(getCurrentMonth())
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
@@ -30,17 +28,18 @@ export default function Budget({ session, showToast }) {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const { data } = await supabase
-        .from('budget_entries')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('month', month)
-        .order('created_at')
-      setEntries(data || [])
+      if (isGuest) {
+        setEntries(getBudgetEntries(month))
+      } else {
+        const { data } = await supabase
+          .from('budget_entries').select('*')
+          .eq('user_id', session.user.id).eq('month', month).order('created_at')
+        setEntries(data || [])
+      }
       setLoading(false)
     }
     load()
-  }, [session, month])
+  }, [session, month, isGuest])
 
   const income = entries.filter(e => e.entry_type === 'income')
   const expenses = entries.filter(e => e.entry_type === 'expense')
@@ -51,20 +50,14 @@ export default function Budget({ session, showToast }) {
   const remaining = totalIncome - totalExpenses - totalSavings
   const savingsRate = totalIncome > 0 ? Math.round((totalSavings / totalIncome) * 100) : 0
 
-  function addRow(type) {
-    if (readOnly) return
-    setEntries(prev => [...prev, emptyRow(type)])
-  }
-
-  function updateRow(id, field, value) {
-    if (readOnly) return
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, [field]: value, dirty: true } : e))
-  }
+  function addRow(type) { if (!readOnly) setEntries(prev => [...prev, emptyRow(type)]) }
+  function updateRow(id, field, value) { if (!readOnly) setEntries(prev => prev.map(e => e.id === id ? { ...e, [field]: value, dirty: true } : e)) }
 
   async function deleteRow(entry) {
     if (readOnly) return
     if (!entry.isNew) {
-      await supabase.from('budget_entries').delete().eq('id', entry.id)
+      if (isGuest) deleteBudgetEntry(entry.id)
+      else await supabase.from('budget_entries').delete().eq('id', entry.id)
     }
     setEntries(prev => prev.filter(e => e.id !== entry.id))
     showToast('Row removed')
@@ -73,26 +66,33 @@ export default function Budget({ session, showToast }) {
   async function saveAll() {
     if (readOnly) return
     setSaving(true)
+
+    if (isGuest) {
+      const toSave = entries.filter(e => e.description && e.amount).map(e => ({
+        ...e,
+        amount: Number(String(e.amount).replace(/[^0-9.]/g, '')),
+        isNew: false, dirty: false
+      }))
+      saveBudgetEntries(month, toSave)
+      setEntries(toSave)
+      setSaving(false)
+      showToast('Saved locally — create an account to keep your data permanently')
+      return
+    }
+
     const dirty = entries.filter(e => e.dirty || e.isNew)
     for (const entry of dirty) {
       if (!entry.description || !entry.amount) continue
       const payload = {
-        user_id: session.user.id,
-        month,
-        description: entry.description,
-        category: entry.category,
-        entry_type: entry.entry_type,
-        frequency: entry.frequency,
+        user_id: session.user.id, month,
+        description: entry.description, category: entry.category,
+        entry_type: entry.entry_type, frequency: entry.frequency,
         amount: Number(String(entry.amount).replace(/[^0-9.]/g, ''))
       }
-      if (entry.isNew) {
-        await supabase.from('budget_entries').insert(payload)
-      } else {
-        await supabase.from('budget_entries').update(payload).eq('id', entry.id)
-      }
+      if (entry.isNew) await supabase.from('budget_entries').insert(payload)
+      else await supabase.from('budget_entries').update(payload).eq('id', entry.id)
     }
-    const { data } = await supabase
-      .from('budget_entries').select('*')
+    const { data } = await supabase.from('budget_entries').select('*')
       .eq('user_id', session.user.id).eq('month', month).order('created_at')
     setEntries(data || [])
     setSaving(false)
@@ -112,17 +112,13 @@ export default function Budget({ session, showToast }) {
           <MonthSelector month={month} onChange={setMonth} />
           {!readOnly && (
             <button className={styles.saveBtn} onClick={saveAll} disabled={saving}>
-              {saving ? 'Saving...' : '💾 Save'}
+              {saving ? 'Saving...' : 'Save'}
             </button>
           )}
         </div>
       </div>
 
-      {readOnly && (
-        <div className={styles.readOnlyBanner}>
-          📅 You're viewing a past month — editing is disabled to preserve historical data.
-        </div>
-      )}
+      {readOnly && <div className={styles.readOnlyBanner}>Viewing a past month — editing is disabled to preserve historical data.</div>}
 
       <div className={styles.summaryBar}>
         {[
@@ -139,9 +135,9 @@ export default function Budget({ session, showToast }) {
         ))}
       </div>
 
-      <BudgetSection title="Income" icon="💰" total={'$' + totalIncome.toLocaleString() + '/mo'} rows={income} cats={INCOME_CATS} onAdd={() => addRow('income')} onUpdate={updateRow} onDelete={deleteRow} readOnly={readOnly} />
-      <BudgetSection title="Expenses" icon="💸" total={'$' + totalExpenses.toLocaleString() + '/mo'} rows={expenses} cats={EXPENSE_CATS} onAdd={() => addRow('expense')} onUpdate={updateRow} onDelete={deleteRow} readOnly={readOnly} />
-      <BudgetSection title="Savings Allocations" icon="🏦" total={'$' + totalSavings.toLocaleString() + '/mo'} rows={savings} cats={SAVINGS_CATS} onAdd={() => addRow('savings')} onUpdate={updateRow} onDelete={deleteRow} readOnly={readOnly} />
+      <BudgetSection title="Income" icon="+" total={'$' + totalIncome.toLocaleString() + '/mo'} rows={income} cats={INCOME_CATS} onAdd={() => addRow('income')} onUpdate={updateRow} onDelete={deleteRow} readOnly={readOnly} />
+      <BudgetSection title="Expenses" icon="-" total={'$' + totalExpenses.toLocaleString() + '/mo'} rows={expenses} cats={EXPENSE_CATS} onAdd={() => addRow('expense')} onUpdate={updateRow} onDelete={deleteRow} readOnly={readOnly} />
+      <BudgetSection title="Savings Allocations" icon="S" total={'$' + totalSavings.toLocaleString() + '/mo'} rows={savings} cats={SAVINGS_CATS} onAdd={() => addRow('savings')} onUpdate={updateRow} onDelete={deleteRow} readOnly={readOnly} />
     </div>
   )
 }
@@ -151,14 +147,12 @@ function BudgetSection({ title, icon, total, rows, cats, onAdd, onUpdate, onDele
     <div className={styles.section}>
       <div className={styles.sectionHeader}>
         <div className={styles.sectionLeft}>
-          <span>{icon}</span>
+          <span className={styles.sectionIcon}>{icon}</span>
           <span className={styles.sectionTitle}>{title}</span>
           <span className={styles.sectionTotal}>Total: <strong>{total}</strong></span>
         </div>
         {!readOnly && <button className={styles.addBtn} onClick={onAdd}>+ Add row</button>}
       </div>
-
-      {/* Desktop table */}
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
@@ -177,17 +171,15 @@ function BudgetSection({ title, icon, total, rows, cats, onAdd, onUpdate, onDele
                 <td><input type="text" value={row.description} placeholder="e.g. Salary, Rent..." onChange={e => onUpdate(row.id, 'description', e.target.value)} readOnly={readOnly} /></td>
                 <td><select value={row.category} onChange={e => onUpdate(row.id, 'category', e.target.value)} disabled={readOnly}>{cats.map(c => <option key={c}>{c}</option>)}</select></td>
                 <td><select value={row.frequency} onChange={e => onUpdate(row.id, 'frequency', e.target.value)} disabled={readOnly}><option value="recurring">Recurring</option><option value="one-time">One-time</option></select></td>
-                <td><input type="text" value={row.amount} placeholder="$0" onChange={e => onUpdate(row.id, 'amount', e.target.value)} readOnly={readOnly} /></td>
+                <td><input type="text" value={row.amount} placeholder="0" onChange={e => onUpdate(row.id, 'amount', e.target.value)} readOnly={readOnly} /></td>
                 {!readOnly && <td className={styles.delCell}><button className={styles.delBtn} onClick={() => onDelete(row)}>×</button></td>}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {/* Mobile card rows */}
       <div className={styles.mobileRows}>
-        {rows.length === 0 && <div className={styles.mobileEmptyRow}>{readOnly ? 'No entries for this month' : 'No entries yet — tap "+ Add row" to start'}</div>}
+        {rows.length === 0 && <div className={styles.mobileEmptyRow}>{readOnly ? 'No entries for this month' : 'Tap "+ Add row" to start'}</div>}
         {rows.map(row => (
           <div key={row.id} className={styles.mobileRow}>
             <div className={styles.mobileRowTop}>
@@ -197,7 +189,7 @@ function BudgetSection({ title, icon, total, rows, cats, onAdd, onUpdate, onDele
             <div className={styles.mobileRowBottom}>
               <select value={row.category} onChange={e => onUpdate(row.id, 'category', e.target.value)} disabled={readOnly}>{cats.map(c => <option key={c}>{c}</option>)}</select>
               <select value={row.frequency} onChange={e => onUpdate(row.id, 'frequency', e.target.value)} disabled={readOnly}><option value="recurring">Recurring</option><option value="one-time">One-time</option></select>
-              <input type="text" value={row.amount} placeholder="Amount e.g. 1500" onChange={e => onUpdate(row.id, 'amount', e.target.value)} readOnly={readOnly} style={{ gridColumn: 'span 2' }} />
+              <input type="text" value={row.amount} placeholder="Amount" onChange={e => onUpdate(row.id, 'amount', e.target.value)} readOnly={readOnly} style={{ gridColumn: 'span 2' }} />
             </div>
           </div>
         ))}

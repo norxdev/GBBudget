@@ -491,3 +491,23 @@
 
   .sectionTitle { font-size: 14px; }
 }
+
+.shareHealthBtn {
+  margin-top: 16px;
+  width: 100%;
+  padding: 8px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.8);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.shareHealthBtn:hover {
+  background: rgba(255,255,255,0.18);
+  color: white;
+}

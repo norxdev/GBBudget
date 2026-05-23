@@ -12,10 +12,7 @@
   padding: 24px;
 }
 
-.logo {
-  text-align: center;
-  margin-bottom: 40px;
-}
+.logo { text-align: center; margin-bottom: 40px; }
 
 .wordmark {
   font-family: 'Instrument Serif', serif;
@@ -24,12 +21,7 @@
   letter-spacing: -0.5px;
 }
 
-.tagline {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-top: 4px;
-  font-weight: 300;
-}
+.tagline { font-size: 13px; color: var(--text-muted); margin-top: 4px; font-weight: 300; }
 
 .card {
   background: var(--surface);
@@ -46,11 +38,7 @@
   margin-bottom: 6px;
 }
 
-.cardSub {
-  color: var(--text-muted);
-  font-size: 13px;
-  margin-bottom: 24px;
-}
+.cardSub { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; }
 
 .errorBanner {
   background: var(--red-light);
@@ -70,9 +58,7 @@
   margin-bottom: 16px;
 }
 
-.formGroup {
-  margin-bottom: 16px;
-}
+.formGroup { margin-bottom: 16px; }
 
 .formGroup label {
   display: block;
@@ -94,12 +80,10 @@
   color: var(--text);
   transition: border-color 0.15s;
   outline: none;
+  font-family: 'DM Sans', sans-serif;
 }
 
-.formGroup input:focus {
-  border-color: var(--accent);
-  background: white;
-}
+.formGroup input:focus { border-color: var(--accent); background: white; }
 
 .btnPrimary {
   width: 100%;
@@ -112,12 +96,53 @@
   font-weight: 500;
   cursor: pointer;
   margin-top: 8px;
-  transition: background 0.15s, transform 0.1s;
+  transition: background 0.15s;
+  font-family: 'DM Sans', sans-serif;
 }
 
 .btnPrimary:hover { background: #333; }
-.btnPrimary:active { transform: scale(0.99); }
 .btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--text-light);
+  font-size: 12px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.guestBtn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'DM Sans', sans-serif;
+  margin-bottom: 10px;
+}
+
+.guestBtn:hover { border-color: var(--text-muted); background: var(--surface2); }
+
+.guestNote {
+  font-size: 11px;
+  color: var(--text-light);
+  text-align: center;
+  line-height: 1.4;
+}
 
 .footer {
   text-align: center;
@@ -126,10 +151,5 @@
   color: var(--text-muted);
 }
 
-.footer span {
-  color: var(--accent);
-  cursor: pointer;
-  font-weight: 500;
-}
-
+.footer span { color: var(--accent); cursor: pointer; font-weight: 500; }
 .footer span:hover { text-decoration: underline; }
