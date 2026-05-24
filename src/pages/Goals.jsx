@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { getGoals, saveGoal, deleteGoal as deleteGuestGoal } from '../lib/localStorage'
+import { isPremium, canAddGoal } from '../lib/plans'
 import styles from './Goals.module.css'
 
 const EMOJIS = ['★','◎','◆','▲','●','■','◐','◑','◒','◓','⬟','⬡']
+const FREE_GOAL_LIMIT = 3
 
-export default function Goals({ session, isGuest, showToast, onUpgrade }) {
+export default function Goals({ session, isGuest, profile, showToast, onUpgrade }) {
   const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', emoji: '★', description: '', target_amount: '', current_amount: '', monthly_contribution: '', target_date: '' })
   const [saving, setSaving] = useState(false)
+  const premium = isPremium(profile)
 
   useEffect(() => { load() }, [session, isGuest])
 
@@ -25,8 +28,18 @@ export default function Goals({ session, isGuest, showToast, onUpgrade }) {
     setLoading(false)
   }
 
+  function handleAddGoalClick() {
+    if (!canAddGoal(profile, goals.length)) {
+      onUpgrade()
+      showToast(`Free plan is limited to ${FREE_GOAL_LIMIT} goals — upgrade for unlimited`)
+      return
+    }
+    setShowForm(true)
+  }
+
   async function handleSaveGoal() {
     if (!form.name || !form.target_amount) { showToast('Name and target amount are required'); return }
+    if (!canAddGoal(profile, goals.length)) { onUpgrade(); return }
     setSaving(true)
     const goal = {
       id: crypto.randomUUID(),
@@ -36,7 +49,6 @@ export default function Goals({ session, isGuest, showToast, onUpgrade }) {
       monthly_contribution: Number(form.monthly_contribution) || 0,
       target_date: form.target_date || null,
     }
-
     if (isGuest) {
       saveGoal(goal)
       setGoals(getGoals())
@@ -46,7 +58,6 @@ export default function Goals({ session, isGuest, showToast, onUpgrade }) {
       await load()
       showToast('Goal added!')
     }
-
     setForm({ name: '', emoji: '★', description: '', target_amount: '', current_amount: '', monthly_contribution: '', target_date: '' })
     setShowForm(false)
     setSaving(false)
@@ -72,7 +83,12 @@ export default function Goals({ session, isGuest, showToast, onUpgrade }) {
           <h1>Savings Goals</h1>
           <p>Track your progress toward the things that matter most</p>
         </div>
-        <button className={styles.addGoalBtn} onClick={() => setShowForm(true)}>+ New Goal</button>
+        <div className={styles.headerRight}>
+          {!premium && !isGuest && (
+            <span className={styles.goalCount}>{goals.length}/{FREE_GOAL_LIMIT} goals</span>
+          )}
+          <button className={styles.addGoalBtn} onClick={handleAddGoalClick}>+ New Goal</button>
+        </div>
       </div>
 
       {showForm && (
@@ -103,7 +119,7 @@ export default function Goals({ session, isGuest, showToast, onUpgrade }) {
           <div className={styles.emptyIcon}>◎</div>
           <h3>No savings goals yet</h3>
           <p>Add your first goal to start tracking your progress</p>
-          <button onClick={() => setShowForm(true)}>+ Add a goal</button>
+          <button onClick={handleAddGoalClick}>+ Add a goal</button>
         </div>
       ) : (
         <div className={styles.goalsGrid}>
@@ -128,23 +144,32 @@ export default function Goals({ session, isGuest, showToast, onUpgrade }) {
                   <span>{pct}% complete</span>
                   {months && <span>~{months} mo remaining</span>}
                 </div>
-                {g.monthly_contribution > 0 && <div className={styles.goalContrib}>Contributing <strong>${Number(g.monthly_contribution).toLocaleString()}/mo</strong></div>}
+                {g.monthly_contribution > 0 && (
+                  <div className={styles.goalContrib}>Contributing <strong>${Number(g.monthly_contribution).toLocaleString()}/mo</strong></div>
+                )}
+                {/* Premium: goal projection */}
+                {premium && g.monthly_contribution > 0 && months && (
+                  <div className={styles.goalProjection}>
+                    On track to complete {months <= 1 ? 'next month' : `in ${months} months`}
+                    {g.target_date && ` · Target: ${new Date(g.target_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                  </div>
+                )}
               </div>
             )
           })}
-          <div className={styles.addCard} onClick={() => setShowForm(true)}>
+          <div className={styles.addCard} onClick={handleAddGoalClick}>
             <div className={styles.addIcon}>+</div>
-            <p>Add a new goal</p>
+            <p>{!premium && goals.length >= FREE_GOAL_LIMIT ? 'Upgrade for more goals' : 'Add a new goal'}</p>
           </div>
         </div>
       )}
 
-      {!isGuest && (
+      {!premium && !isGuest && (
         <div className={styles.premiumBanner}>
           <div>
             <div className={styles.premiumLabel}>Premium Feature</div>
-            <div className={styles.premiumTitle}>Unlimited goals + compound interest projections</div>
-            <div className={styles.premiumDesc}>Connect bank accounts, track unlimited goals, and see projected growth over time.</div>
+            <div className={styles.premiumTitle}>Unlimited goals + projections</div>
+            <div className={styles.premiumDesc}>Free plan includes {FREE_GOAL_LIMIT} goals. Upgrade for unlimited goals, detailed projections, and compound interest calculations.</div>
           </div>
           <button className={styles.upgradeBtn} onClick={onUpgrade}>Upgrade</button>
         </div>

@@ -334,3 +334,38 @@
 
   .upgradeBtn { width: 100%; }
 }
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.goalCount {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 5px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.goalProjection {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 500;
+  background: var(--accent-light);
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+  .headerRight {
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+  }
+}
