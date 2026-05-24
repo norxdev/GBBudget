@@ -195,7 +195,7 @@ export default function Profile({ session, profile, onSignOut, showToast }) {
                   <button className={styles.primaryBtn} onClick={handleUpgrade}>
                     Upgrade to Premium →
                   </button>
-                  <div className={styles.planNote}>7-day free trial · Cancel anytime · No credit card required to try</div>
+                  <div className={styles.planNote}>7-day free trial · Cancel anytime</div>
                 </>
               )}
             </div>
