@@ -314,3 +314,113 @@
     width: 100%;
   }
 }
+
+/* Row usage indicator */
+.rowUsage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rowUsageBar {
+  flex: 1;
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.rowUsageFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.rowUsageWarning .rowUsageFill { background: var(--amber); }
+.rowUsageFull .rowUsageFill { background: var(--red); }
+.rowUsageWarning { color: var(--amber); }
+.rowUsageFull { color: var(--red); }
+
+.rowUpgradeBtn {
+  background: var(--text);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Budget limits */
+.limitInput {
+  color: var(--text-muted) !important;
+  font-style: italic;
+}
+
+.limitStatus { text-align: center; }
+
+.okBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.nearBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--amber);
+  background: var(--amber-light);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.overBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--red);
+  background: var(--red-light);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.rowOver td { background: var(--red-light) !important; }
+.rowNear td { background: var(--amber-light) !important; }
+.mobileRowOver { background: var(--red-light); border-radius: var(--radius-sm); }
+.mobileOverWarning { font-size: 11px; color: var(--red); font-weight: 500; padding: 0 4px 8px; }
+
+/* Limits upsell */
+.limitsUpsell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.limitsUpsell button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  text-decoration: underline;
+}
