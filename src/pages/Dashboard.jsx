@@ -42,7 +42,7 @@ const CAT_COLORS = {
   Subscriptions: '#E76F51', Dining: '#E67E22', Shopping: '#C0392B', Other: '#95A5A6'
 }
 
-export default function Dashboard({ session, isGuest, onUpgrade, onTabChange, initialShareParams }) {
+export default function Dashboard({ session, isGuest, profile, onUpgrade, onTabChange, initialShareParams }) {
   const [month, setMonth] = useState(getCurrentMonth())
   const [entries, setEntries] = useState([])
   const [goals, setGoals] = useState([])
@@ -137,7 +137,7 @@ export default function Dashboard({ session, isGuest, onUpgrade, onTabChange, in
           <h1>Dashboard</h1>
           <p>Your financial snapshot</p>
         </div>
-        <MonthSelector month={month} onChange={setMonth} />
+        <MonthSelector month={month} onChange={setMonth} profile={profile} onUpgrade={onUpgrade} />
       </div>
 
       {!hasData && (
