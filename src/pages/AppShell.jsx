@@ -32,11 +32,27 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
   const [profile, setProfile] = useState(null)
 
   useEffect(() => {
-    if (session) {
-      supabase.from('profiles').select('*').eq('id', session.user.id).single()
-        .then(({ data }) => { if (data) setProfile(data) })
+    if (session) loadProfile()
+  }, [session])
+
+  // Reload profile if returning from successful checkout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('checkout') === 'success' && session) {
+      setTimeout(() => loadProfile(), 2500)
+      window.history.replaceState({}, '', window.location.pathname)
+      showToast('Welcome to Premium!')
+    }
+    if (params.get('checkout') === 'cancelled') {
+      window.history.replaceState({}, '', window.location.pathname)
     }
   }, [session])
+
+  async function loadProfile() {
+    const { data } = await supabase
+      .from('profiles').select('*').eq('id', session.user.id).single()
+    if (data) setProfile(data)
+  }
 
   function showToast(msg) {
     setToast(msg)
@@ -70,25 +86,27 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
 
   function handleSignUpFromPrompt() {
     setShowSignUpPrompt(false)
-    handleSignOut() // returns to login page
+    handleSignOut()
   }
 
   const displayName = isGuest ? 'Guest' : (profile?.full_name || session?.user?.email?.split('@')[0] || 'User')
   const initials = isGuest ? 'G' : displayName.slice(0, 2).toUpperCase()
+  const isPremium = profile?.plan === 'premium'
 
   const sharedProps = {
     session,
     isGuest,
+    profile,
     showToast,
     onUpgrade: () => setShowUpgrade(true),
     onTabChange: handleTabChange,
     requireAuth,
     initialShareParams,
+    onProfileUpdate: loadProfile,
   }
 
   return (
     <div className={styles.shell}>
-      {/* Top nav */}
       <nav className={styles.topnav}>
         <div className={styles.navLogo}>Clarity</div>
         <div className={styles.navTabs}>
@@ -112,21 +130,25 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
             <span className={styles.userName}>{displayName}</span>
             {isGuest
               ? <span className={styles.badgeGuest}>Guest</span>
-              : <span className={styles.badgeFree}>{profile?.plan === 'premium' ? 'Pro' : 'Free'}</span>
+              : <span className={`${styles.badgeFree} ${isPremium ? styles.badgePremium : ''}`}>
+                  {isPremium ? 'Pro' : 'Free'}
+                </span>
             }
           </div>
         </div>
       </nav>
 
-      {/* Guest banner */}
-      {isGuest && (
-        <GuestBanner onSignUp={handleSignUpFromPrompt} />
-      )}
+      {isGuest && <GuestBanner onSignUp={handleSignUpFromPrompt} />}
 
-      {/* Page content */}
       <div className={styles.content}>
         {showProfile && session && (
-          <Profile session={session} profile={profile} onSignOut={handleSignOut} showToast={showToast} />
+          <Profile
+            session={session}
+            profile={profile}
+            onSignOut={handleSignOut}
+            showToast={showToast}
+            onProfileUpdate={loadProfile}
+          />
         )}
         {showProfile && isGuest && (
           <div style={{ padding: '60px 28px', textAlign: 'center' }}>
@@ -138,10 +160,9 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
         {!showProfile && activeTab === 'budget'        && <Budget        {...sharedProps} />}
         {!showProfile && activeTab === 'goals'         && <Goals         {...sharedProps} />}
         {!showProfile && activeTab === 'affordability' && <Affordability {...sharedProps} />}
-        {!showProfile && activeTab === 'reports'       && !isGuest && <Reports {...sharedProps} />}
+        {!showProfile && activeTab === 'reports' && !isGuest && <Reports {...sharedProps} />}
       </div>
 
-      {/* Mobile bottom nav */}
       <nav className={styles.bottomNav}>
         {TABS.map(tab => (
           <button
