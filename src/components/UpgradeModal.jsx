@@ -37,7 +37,6 @@ export default function UpgradeModal({ onClose, showToast }) {
             'Net worth tracker',
             'CSV/bank data upload',
             'Multiple budget frameworks (Dave Ramsey, FIRE)',
-            'Priority email support',
           ].map(f => (
             <li key={f}><span className={styles.check}>✓</span>{f}</li>
           ))}
