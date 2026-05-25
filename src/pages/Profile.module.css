@@ -334,3 +334,122 @@
   .fieldRow { flex-direction: column; }
   .saveBtn { padding: 10px; }
 }
+
+/* Comparison table */
+.compareTable {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.compareHeader {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.compareRow {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px;
+  border-bottom: 1px solid var(--border);
+}
+
+.compareRow:last-child { border-bottom: none; }
+.compareRow:hover { background: var(--bg); }
+
+.compareFeature {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.compareCol {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  border-left: 1px solid var(--border);
+}
+
+.compareHeader .compareFeature {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.compareHeader .compareCol {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.comparePremium {
+  background: var(--accent-light) !important;
+}
+
+.compareHeader .comparePremium {
+  color: var(--accent) !important;
+}
+
+/* Contact form */
+.contactIntro {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.selectField {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+.selectField:focus { border-color: var(--accent); background: white; }
+
+.textarea {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: 'DM Sans', sans-serif;
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.5;
+}
+
+.textarea:focus { border-color: var(--accent); background: white; }
+
+.contactNote {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--text-light);
+  line-height: 1.4;
+}
+
+@media (max-width: 700px) {
+  .compareTable { font-size: 11px; }
+  .compareHeader { grid-template-columns: 1fr 80px 80px; }
+  .compareRow { grid-template-columns: 1fr 80px 80px; }
+  .compareFeature { padding: 8px 10px; font-size: 11px; }
+  .compareCol { padding: 8px 6px; font-size: 11px; }
+}
