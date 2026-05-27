@@ -216,8 +216,10 @@ export default function Budget({ session, isGuest, profile, showToast, onUpgrade
         <CSVImport
           profile={profile}
           month={month}
+          existingRowCount={totalRows}
           onImport={handleImport}
           onClose={() => setShowImport(false)}
+          onUpgrade={onUpgrade}
         />
       )}
     </div>
