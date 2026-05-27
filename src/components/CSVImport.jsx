@@ -7,23 +7,19 @@ const FREE_ROW_LIMIT = 10
 const EXPENSE_CATS = ['Housing','Food','Transport','Healthcare','Entertainment','Subscriptions','Dining','Shopping','Other']
 const INCOME_CATS  = ['Employment','Freelance','Investment','Rental','Other']
 const SAVINGS_CATS = ['Emergency','Investment','Travel','Major Purchase','Retirement','Other']
-const ALL_CATS = [...new Set([...EXPENSE_CATS, ...INCOME_CATS, ...SAVINGS_CATS])]
+const ENTRY_TYPES  = ['income','expense','savings']
+const FREQUENCIES  = ['recurring','one-time']
 
-const ENTRY_TYPES = ['income','expense','savings']
-const FREQUENCIES = ['recurring','one-time']
-
-// Fuzzy match a header to a known field
 function guessField(header) {
   const h = header.toLowerCase().trim()
   if (['description','name','item','details','memo','narration','payee','note'].some(k => h.includes(k))) return 'description'
   if (['amount','sum','value','price','cost','debit','credit','payment'].some(k => h.includes(k))) return 'amount'
-  if (['type','kind','flow','direction','in/out','inout'].some(k => h.includes(k))) return 'entry_type'
+  if (['type','kind','flow','direction','in/out','inout','category type'].some(k => h.includes(k))) return 'entry_type'
   if (['category','cat','group','tag','label'].some(k => h.includes(k))) return 'category'
   if (['frequency','freq','recurring','schedule'].some(k => h.includes(k))) return 'frequency'
   return 'ignore'
 }
 
-// Parse CSV text into array of objects
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/)
   if (lines.length < 2) return { headers: [], rows: [] }
@@ -37,18 +33,16 @@ function parseCSV(text) {
       else { cur += ch }
     }
     vals.push(cur.trim())
-    return headers.reduce((obj, h, i) => { obj[h] = vals[i] || ''; return obj }, {})
+    return headers.reduce((obj, h, i) => { obj[h] = (vals[i] || '').replace(/^"|"$/g, ''); return obj }, {})
   }).filter(r => Object.values(r).some(v => v))
   return { headers, rows }
 }
 
-// Clean amount string to number
 function cleanAmount(val) {
   if (!val) return ''
   return String(val).replace(/[$,\s]/g, '')
 }
 
-// Fuzzy match category
 function matchCategory(val) {
   if (!val) return 'Other'
   const v = val.toLowerCase()
@@ -57,25 +51,25 @@ function matchCategory(val) {
   if (['dining','restaurant','cafe','coffee','takeout','eat'].some(k => v.includes(k))) return 'Dining'
   if (['transport','gas','fuel','uber','lyft','car','transit','parking'].some(k => v.includes(k))) return 'Transport'
   if (['netflix','spotify','subscription','hulu','disney','amazon prime'].some(k => v.includes(k))) return 'Subscriptions'
-  if (['health','gym','medical','doctor','pharmacy','insurance'].some(k => v.includes(k))) return 'Healthcare'
-  if (['salary','payroll','paycheck','income','wage'].some(k => v.includes(k))) return 'Employment'
+  if (['health','gym','medical','doctor','pharmacy'].some(k => v.includes(k))) return 'Healthcare'
+  if (['salary','payroll','paycheck','wage'].some(k => v.includes(k))) return 'Employment'
   if (['freelance','contract','consulting','gig'].some(k => v.includes(k))) return 'Freelance'
   if (['entertainment','movie','game','fun'].some(k => v.includes(k))) return 'Entertainment'
-  if (['shopping','amazon','retail','clothes','clothing'].some(k => v.includes(k))) return 'Shopping'
-  if (['emergency','savings','saving','rainy day'].some(k => v.includes(k))) return 'Emergency'
-  if (['invest','stock','fund','etf','401k','retirement'].some(k => v.includes(k))) return 'Investment'
+  if (['shopping','amazon','retail','clothes'].some(k => v.includes(k))) return 'Shopping'
+  if (['emergency','rainy day'].some(k => v.includes(k))) return 'Emergency'
+  if (['invest','stock','fund','401k','retirement'].some(k => v.includes(k))) return 'Investment'
   return 'Other'
 }
 
 function guessEntryType(val) {
-  if (!val) return 'expense'
-  const v = val.toLowerCase()
-  if (['income','in','credit','deposit','salary','earning','received'].some(k => v.includes(k))) return 'income'
-  if (['saving','savings','transfer to savings'].some(k => v.includes(k))) return 'savings'
-  return 'expense'
+  if (!val) return null // null = unknown, shown as warning
+  const v = val.toLowerCase().trim()
+  if (['income','in','credit','deposit','salary','earning','received','revenue'].some(k => v.includes(k))) return 'income'
+  if (['saving','savings','save','transfer to savings'].some(k => v.includes(k))) return 'savings'
+  if (['expense','out','debit','payment','spend','cost','charge'].some(k => v.includes(k))) return 'expense'
+  return null // couldn't determine
 }
 
-// Download template CSV
 function downloadTemplate() {
   const csv = [
     'Description,Amount,Type,Category,Frequency',
@@ -92,33 +86,36 @@ function downloadTemplate() {
   URL.revokeObjectURL(url)
 }
 
-export default function CSVImport({ profile, month, onImport, onClose }) {
-  const [step, setStep] = useState('upload') // upload | map | preview | done
+export default function CSVImport({ profile, month, existingRowCount, onImport, onClose, onUpgrade }) {
+  const [step, setStep] = useState('upload')
   const [file, setFile] = useState(null)
   const [parsed, setParsed] = useState(null)
   const [mapping, setMapping] = useState({})
   const [globalType, setGlobalType] = useState('expense')
   const [useGlobalType, setUseGlobalType] = useState(false)
-  const [importMode, setImportMode] = useState('add') // add | replace
+  const [importMode, setImportMode] = useState('add')
   const [preview, setPreview] = useState([])
-  const [importing, setImporting] = useState(false)
+  const [rowOverrides, setRowOverrides] = useState({}) // per-row type overrides
   const fileRef = useRef()
   const premium = isPremium(profile)
 
+  // How many rows can still be added
+  const existingCount = importMode === 'replace' ? 0 : (existingRowCount || 0)
+  const availableRows = premium ? Infinity : Math.max(0, FREE_ROW_LIMIT - existingCount)
+  const atLimit = !premium && existingCount >= FREE_ROW_LIMIT && importMode === 'add'
+
   function handleFile(e) {
-    const f = e.target.files[0]
-    if (!f) return
+    const f = e.target.files?.[0] || e
+    if (!f || !f.name) return
     setFile(f)
     const reader = new FileReader()
     reader.onload = evt => {
       const { headers, rows } = parseCSV(evt.target.result)
       if (!headers.length) return
-      // Auto-guess mapping
       const guessed = {}
       headers.forEach(h => { guessed[h] = guessField(h) })
       setMapping(guessed)
       setParsed({ headers, rows })
-      // Check if there's a type column
       const hasTypeCol = Object.values(guessed).includes('entry_type')
       setUseGlobalType(!hasTypeCol)
       setStep('map')
@@ -126,29 +123,60 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
     reader.readAsText(f)
   }
 
-  function buildPreview() {
-    const rows = parsed.rows.map(row => {
-      const desc   = mapping && Object.keys(mapping).find(h => mapping[h] === 'description') ? row[Object.keys(mapping).find(h => mapping[h] === 'description')] : ''
-      const amtRaw = mapping && Object.keys(mapping).find(h => mapping[h] === 'amount')      ? row[Object.keys(mapping).find(h => mapping[h] === 'amount')]      : ''
-      const typeRaw= mapping && Object.keys(mapping).find(h => mapping[h] === 'entry_type')  ? row[Object.keys(mapping).find(h => mapping[h] === 'entry_type')]  : ''
-      const catRaw = mapping && Object.keys(mapping).find(h => mapping[h] === 'category')    ? row[Object.keys(mapping).find(h => mapping[h] === 'category')]    : ''
-      const freqRaw= mapping && Object.keys(mapping).find(h => mapping[h] === 'frequency')   ? row[Object.keys(mapping).find(h => mapping[h] === 'frequency')]   : ''
+  function handleDrop(e) {
+    e.preventDefault()
+    const f = e.dataTransfer.files[0]
+    if (f) handleFile(f)
+  }
 
-      const entryType = useGlobalType ? globalType : guessEntryType(typeRaw)
+  function buildPreview() {
+    const descKey  = Object.keys(mapping).find(h => mapping[h] === 'description')
+    const amtKey   = Object.keys(mapping).find(h => mapping[h] === 'amount')
+    const typeKey  = Object.keys(mapping).find(h => mapping[h] === 'entry_type')
+    const catKey   = Object.keys(mapping).find(h => mapping[h] === 'category')
+    const freqKey  = Object.keys(mapping).find(h => mapping[h] === 'frequency')
+
+    const rows = parsed.rows.map((row, i) => {
+      const desc    = descKey  ? row[descKey]  : ''
+      const amtRaw  = amtKey   ? row[amtKey]   : ''
+      const typeRaw = typeKey  ? row[typeKey]  : ''
+      const catRaw  = catKey   ? row[catKey]   : ''
+      const freqRaw = freqKey  ? row[freqKey]  : ''
+
+      const detectedType = useGlobalType ? globalType : guessEntryType(typeRaw)
+      const entryType    = detectedType || 'expense' // fallback
+      const needsReview  = !useGlobalType && detectedType === null
+
       const amount    = cleanAmount(amtRaw)
       const category  = catRaw ? matchCategory(catRaw) : (entryType === 'income' ? 'Employment' : entryType === 'savings' ? 'Emergency' : 'Other')
       const frequency = freqRaw && FREQUENCIES.includes(freqRaw.toLowerCase()) ? freqRaw.toLowerCase() : 'recurring'
 
-      return { description: desc, amount, entry_type: entryType, category, frequency, _raw: row }
-    }).filter(r => r.description && r.amount && !isNaN(Number(r.amount)))
+      return { _id: i, description: desc, amount, entry_type: entryType, category, frequency, needsReview, _typeRaw: typeRaw }
+    }).filter(r => r.description && r.amount && !isNaN(Number(r.amount)) && Number(r.amount) > 0)
 
     setPreview(rows)
+    setRowOverrides({})
     setStep('preview')
   }
 
-  const totalRows   = preview.length
-  const limitedRows = !premium && totalRows > FREE_ROW_LIMIT
-  const rowsToImport = limitedRows ? preview.slice(0, FREE_ROW_LIMIT) : preview
+  function setRowType(id, type) {
+    setRowOverrides(o => ({ ...o, [id]: type }))
+  }
+
+  // Apply overrides
+  const finalPreview = preview.map(r => ({
+    ...r,
+    entry_type: rowOverrides[r._id] ?? r.entry_type,
+  }))
+
+  const needsReviewCount = finalPreview.filter(r => r.needsReview && !rowOverrides[r._id]).length
+  const totalRows = finalPreview.length
+
+  // Row limit logic
+  const rowsAllowed  = premium ? totalRows : Math.min(totalRows, availableRows)
+  const rowsTruncated = totalRows - rowsAllowed
+  const rowsToImport  = finalPreview.slice(0, rowsAllowed)
+  const overLimit     = !premium && rowsTruncated > 0
 
   function handleConfirmImport() {
     onImport({ rows: rowsToImport, mode: importMode })
@@ -159,25 +187,23 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
     <div className={styles.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className={styles.modal}>
 
-        {/* Header */}
         <div className={styles.modalHeader}>
           <div>
             <div className={styles.modalTitle}>Import CSV</div>
             <div className={styles.modalSub}>
               {step === 'upload'  && 'Upload a CSV file to import budget data'}
               {step === 'map'     && 'Map your columns to budget fields'}
-              {step === 'preview' && 'Review what will be imported'}
+              {step === 'preview' && 'Review and confirm what will be imported'}
               {step === 'done'    && 'Import complete'}
             </div>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>×</button>
         </div>
 
-        {/* Steps indicator */}
         <div className={styles.steps}>
           {['Upload','Map','Preview','Done'].map((s, i) => {
-            const stepIds = ['upload','map','preview','done']
-            const active  = stepIds.indexOf(step) >= i
+            const ids = ['upload','map','preview','done']
+            const active = ids.indexOf(step) >= i
             return (
               <div key={s} className={`${styles.step} ${active ? styles.stepActive : ''}`}>
                 <div className={styles.stepDot}>{i + 1}</div>
@@ -193,21 +219,26 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
           {/* STEP 1 — Upload */}
           {step === 'upload' && (
             <div className={styles.uploadStep}>
+              {atLimit && (
+                <div className={styles.limitBanner}>
+                  You've reached the {FREE_ROW_LIMIT}-row limit for the free plan.
+                  <button onClick={onUpgrade}>Upgrade to import more →</button>
+                </div>
+              )}
               <div
                 className={styles.dropZone}
                 onClick={() => fileRef.current.click()}
                 onDragOver={e => e.preventDefault()}
-                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) { const fake = { target: { files: [f] } }; handleFile(fake) } }}
+                onDrop={handleDrop}
               >
                 <div className={styles.dropIcon}>↑</div>
                 <div className={styles.dropTitle}>Click to upload or drag & drop</div>
-                <div className={styles.dropSub}>CSV files only</div>
+                <div className={styles.dropSub}>CSV files only · Max {FREE_ROW_LIMIT} rows on free plan</div>
                 <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} style={{ display: 'none' }} />
               </div>
-
               <div className={styles.templateSection}>
                 <div className={styles.templateTitle}>Don't have a CSV?</div>
-                <div className={styles.templateDesc}>Download our template, fill it in, and import it back.</div>
+                <div className={styles.templateDesc}>Download our template — fill in your data and import it back. The Type column should say <strong>income</strong>, <strong>expense</strong>, or <strong>savings</strong>.</div>
                 <button className={styles.templateBtn} onClick={downloadTemplate}>Download template</button>
               </div>
             </div>
@@ -218,6 +249,9 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
             <div className={styles.mapStep}>
               <div className={styles.mapInfo}>
                 Found <strong>{parsed.rows.length} rows</strong> and <strong>{parsed.headers.length} columns</strong> in {file?.name}
+                {!premium && importMode === 'add' && (
+                  <span className={styles.rowAvail}> · {availableRows} row{availableRows !== 1 ? 's' : ''} available on your plan</span>
+                )}
               </div>
 
               <div className={styles.mapTable}>
@@ -238,7 +272,7 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
                         <option value="ignore">— Ignore —</option>
                         <option value="description">Description</option>
                         <option value="amount">Amount</option>
-                        <option value="entry_type">Type (income/expense)</option>
+                        <option value="entry_type">Type (income / expense / savings)</option>
                         <option value="category">Category</option>
                         <option value="frequency">Frequency</option>
                       </select>
@@ -248,11 +282,20 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
                 ))}
               </div>
 
-              {/* Global type override */}
+              {/* Type explanation box */}
+              <div className={styles.typeExplainer}>
+                <div className={styles.typeExplainerTitle}>How type is detected</div>
+                {useGlobalType ? (
+                  <p>No type column found — all rows will be set to the type you choose below.</p>
+                ) : (
+                  <p>The <strong>Type</strong> column will be read automatically. Values like "income", "salary", "credit" → <span className={styles.pill} style={{background:'var(--accent-light)',color:'var(--accent)'}}>income</span>. Values like "savings", "save" → <span className={styles.pill} style={{background:'var(--blue-light)',color:'var(--blue)'}}>savings</span>. Everything else → <span className={styles.pill} style={{background:'var(--accent2-light)',color:'var(--accent2)'}}>expense</span>. You can fix individual rows in the next step.</p>
+                )}
+              </div>
+
               <div className={styles.globalType}>
                 <label className={styles.checkRow}>
                   <input type="checkbox" checked={useGlobalType} onChange={e => setUseGlobalType(e.target.checked)} />
-                  <span>Set all rows to one type</span>
+                  <span>Set all rows to one type instead</span>
                 </label>
                 {useGlobalType && (
                   <div className={styles.typeSelect}>
@@ -269,24 +312,21 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
                 )}
               </div>
 
-              {/* Import mode */}
               <div className={styles.importMode}>
                 <div className={styles.importModeTitle}>How should we handle existing data?</div>
                 <div className={styles.importModeOptions}>
-                  <label className={`${styles.modeOption} ${importMode === 'add' ? styles.modeOptionOn : ''}`}>
-                    <input type="radio" name="mode" value="add" checked={importMode === 'add'} onChange={() => setImportMode('add')} />
-                    <div>
-                      <div className={styles.modeLabel}>Add to existing</div>
-                      <div className={styles.modeDesc}>Keep current entries, add imported rows alongside them</div>
-                    </div>
-                  </label>
-                  <label className={`${styles.modeOption} ${importMode === 'replace' ? styles.modeOptionOn : ''}`}>
-                    <input type="radio" name="mode" value="replace" checked={importMode === 'replace'} onChange={() => setImportMode('replace')} />
-                    <div>
-                      <div className={styles.modeLabel}>Replace existing</div>
-                      <div className={styles.modeDesc}>Delete current month's data and replace with import</div>
-                    </div>
-                  </label>
+                  {[
+                    { val: 'add',     label: 'Add to existing',  desc: 'Keep current entries, add imported rows alongside them' },
+                    { val: 'replace', label: 'Replace existing', desc: 'Delete current month\'s data and replace with import' },
+                  ].map(opt => (
+                    <label key={opt.val} className={`${styles.modeOption} ${importMode === opt.val ? styles.modeOptionOn : ''}`}>
+                      <input type="radio" name="mode" value={opt.val} checked={importMode === opt.val} onChange={() => setImportMode(opt.val)} />
+                      <div>
+                        <div className={styles.modeLabel}>{opt.label}</div>
+                        <div className={styles.modeDesc}>{opt.desc}</div>
+                      </div>
+                    </label>
+                  ))}
                 </div>
               </div>
 
@@ -297,22 +337,37 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
               >
                 Preview import →
               </button>
+              {!Object.values(mapping).includes('description') && <div className={styles.mapHint}>Map at least Description and Amount to continue</div>}
             </div>
           )}
 
           {/* STEP 3 — Preview */}
           {step === 'preview' && (
             <div className={styles.previewStep}>
-              {limitedRows && (
+
+              {/* Row limit warning */}
+              {overLimit && (
                 <div className={styles.limitWarning}>
-                  Your file has <strong>{totalRows} rows</strong>. Free plan is limited to {FREE_ROW_LIMIT} rows.
-                  Only the first {FREE_ROW_LIMIT} will be imported.
-                  <button className={styles.upgradeInline} onClick={onClose}>Upgrade to import all →</button>
+                  <div>
+                    Your file has <strong>{totalRows} rows</strong> but you can only import <strong>{rowsAllowed}</strong> more
+                    {importMode === 'add' ? ` (${existingCount} rows already in budget, ${FREE_ROW_LIMIT} row limit)` : ` (free plan limit)`}.
+                  </div>
+                  <button className={styles.upgradeInline} onClick={() => { onClose(); onUpgrade() }}>
+                    Upgrade to import all {totalRows} rows →
+                  </button>
+                </div>
+              )}
+
+              {/* Needs review warning */}
+              {needsReviewCount > 0 && (
+                <div className={styles.reviewWarning}>
+                  <strong>{needsReviewCount} row{needsReviewCount > 1 ? 's' : ''}</strong> couldn't be auto-classified as income, expense, or savings.
+                  Please set the type using the dropdown on those rows before importing.
                 </div>
               )}
 
               <div className={styles.previewInfo}>
-                Importing <strong>{rowsToImport.length} rows</strong> as <strong>{importMode === 'replace' ? 'replacement' : 'addition'}</strong> to {month}
+                Importing <strong>{rowsToImport.length} row{rowsToImport.length !== 1 ? 's' : ''}</strong> as <strong>{importMode === 'replace' ? 'replacement' : 'addition'}</strong> to your budget
               </div>
 
               <div className={styles.previewTableWrap}>
@@ -328,17 +383,27 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
                   </thead>
                   <tbody>
                     {rowsToImport.map((r, i) => (
-                      <tr key={i}>
+                      <tr key={i} className={r.needsReview && !rowOverrides[r._id] ? styles.reviewRow : ''}>
                         <td>{r.description}</td>
-                        <td><span className={`${styles.typePill} ${styles['t_' + r.entry_type]}`}>{r.entry_type}</span></td>
+                        <td>
+                          <select
+                            className={`${styles.typeSelect2} ${styles['tsel_' + r.entry_type]}`}
+                            value={rowOverrides[r._id] ?? r.entry_type}
+                            onChange={e => setRowType(r._id, e.target.value)}
+                          >
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                            <option value="savings">Savings</option>
+                          </select>
+                        </td>
                         <td>{r.category}</td>
                         <td style={{ textTransform: 'capitalize' }}>{r.frequency}</td>
                         <td><strong>${Number(r.amount).toLocaleString()}</strong></td>
                       </tr>
                     ))}
-                    {limitedRows && (
+                    {overLimit && (
                       <tr className={styles.truncatedRow}>
-                        <td colSpan={5}>+ {totalRows - FREE_ROW_LIMIT} more rows not imported (upgrade to include all)</td>
+                        <td colSpan={5}>+ {rowsTruncated} more row{rowsTruncated !== 1 ? 's' : ''} not imported — upgrade to include all</td>
                       </tr>
                     )}
                   </tbody>
@@ -347,8 +412,13 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
 
               <div className={styles.previewActions}>
                 <button className={styles.backBtn} onClick={() => setStep('map')}>Back</button>
-                <button className={styles.primaryBtn} onClick={handleConfirmImport} disabled={importing}>
-                  {importing ? 'Importing...' : `Import ${rowsToImport.length} rows`}
+                <button
+                  className={styles.primaryBtn}
+                  onClick={handleConfirmImport}
+                  disabled={needsReviewCount > 0}
+                  title={needsReviewCount > 0 ? 'Fix unclassified rows first' : ''}
+                >
+                  Import {rowsToImport.length} rows
                 </button>
               </div>
             </div>
@@ -359,7 +429,7 @@ export default function CSVImport({ profile, month, onImport, onClose }) {
             <div className={styles.doneStep}>
               <div className={styles.doneIcon}>✓</div>
               <h3>Import complete</h3>
-              <p>{rowsToImport.length} rows imported successfully to your budget.</p>
+              <p>{rowsToImport.length} rows imported successfully to your {month} budget.</p>
               <button className={styles.primaryBtn} onClick={onClose}>View budget</button>
             </div>
           )}
