@@ -4,6 +4,7 @@ import { getBudgetEntries, saveBudgetEntries, deleteBudgetEntry } from '../lib/l
 import { getCurrentMonth, formatMonthLabel, isFutureMonth } from '../lib/months'
 import { isPremium, canAddBudgetRow } from '../lib/plans'
 import MonthSelector from '../components/MonthSelector'
+import CSVImport from '../components/CSVImport'
 import styles from './Budget.module.css'
 
 const INCOME_CATS = ['Employment', 'Freelance', 'Investment', 'Rental', 'Other']
@@ -29,6 +30,7 @@ export default function Budget({ session, isGuest, profile, showToast, onUpgrade
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const readOnly = isFutureMonth(month)
   const premium = isPremium(profile)
   const totalRows = entries.length
@@ -122,6 +124,37 @@ export default function Budget({ session, isGuest, profile, showToast, onUpgrade
     showToast('Budget saved!')
   }
 
+
+  async function handleImport({ rows, mode }) {
+    if (mode === 'replace' && !isGuest) {
+      await supabase.from('budget_entries').delete()
+        .eq('user_id', session.user.id).eq('month', month)
+    }
+    if (isGuest) {
+      if (mode === 'replace') saveBudgetEntries(month, rows)
+      else {
+        const existing = getBudgetEntries(month)
+        saveBudgetEntries(month, [...existing, ...rows.map(r => ({ ...r, id: crypto.randomUUID() }))])
+      }
+      setEntries(getBudgetEntries(month))
+    } else {
+      for (const row of rows) {
+        await supabase.from('budget_entries').insert({
+          user_id: session.user.id, month,
+          description: row.description,
+          category: row.category,
+          entry_type: row.entry_type,
+          frequency: row.frequency,
+          amount: Number(row.amount),
+        })
+      }
+      const { data } = await supabase.from('budget_entries').select('*')
+        .eq('user_id', session.user.id).eq('month', month).order('created_at')
+      setEntries(data || [])
+    }
+    showToast(`${rows.length} rows imported!`)
+  }
+
   if (loading) return <div className={styles.loading}>Loading budget...</div>
 
   return (
@@ -133,6 +166,11 @@ export default function Budget({ session, isGuest, profile, showToast, onUpgrade
         </div>
         <div className={styles.headerRight}>
           <MonthSelector month={month} onChange={setMonth} profile={profile} onUpgrade={onUpgrade} />
+          {!readOnly && (
+            <button className={styles.importBtn} onClick={() => setShowImport(true)}>
+              Import CSV
+            </button>
+          )}
           {!readOnly && (
             <button className={styles.saveBtn} onClick={saveAll} disabled={saving}>
               {saving ? 'Saving...' : 'Save'}
@@ -174,6 +212,14 @@ export default function Budget({ session, isGuest, profile, showToast, onUpgrade
       <BudgetSection title="Income" icon="+" total={'$' + totalIncome.toLocaleString() + '/mo'} rows={income} cats={INCOME_CATS} onAdd={() => addRow('income')} onUpdate={updateRow} onDelete={deleteRow} readOnly={readOnly} premium={premium} showLimits={false} />
       <BudgetSection title="Expenses" icon="-" total={'$' + totalExpenses.toLocaleString() + '/mo'} rows={expenses} cats={EXPENSE_CATS} onAdd={() => addRow('expense')} onUpdate={updateRow} onDelete={deleteRow} readOnly={readOnly} premium={premium} showLimits={true} onUpgrade={onUpgrade} />
       <BudgetSection title="Savings Allocations" icon="S" total={'$' + totalSavings.toLocaleString() + '/mo'} rows={savings} cats={SAVINGS_CATS} onAdd={() => addRow('savings')} onUpdate={updateRow} onDelete={deleteRow} readOnly={readOnly} premium={premium} showLimits={false} />
+    {showImport && (
+        <CSVImport
+          profile={profile}
+          month={month}
+          onImport={handleImport}
+          onClose={() => setShowImport(false)}
+        />
+      )}
     </div>
   )
 }
