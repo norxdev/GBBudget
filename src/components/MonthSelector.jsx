@@ -13,6 +13,7 @@ export default function MonthSelector({ month, onChange, profile, onUpgrade }) {
   const next = getNextMonth(month)
   const future = isFutureMonth(next)
   const current = isCurrentMonth(month)
+  // Fix #5: lock fires any time history not allowed, not just on current month
   const historyAllowed = canViewHistory(profile)
 
   function handlePrev() {
@@ -26,11 +27,11 @@ export default function MonthSelector({ month, onChange, profile, onUpgrade }) {
   return (
     <div className={styles.selector}>
       <button
-        className={`${styles.arrow} ${!historyAllowed && current ? styles.locked : ''}`}
+        className={`${styles.arrow} ${!historyAllowed ? styles.locked : ''}`}
         onClick={handlePrev}
         title={!historyAllowed ? 'Upgrade to view history' : 'Previous month'}
       >
-        {!historyAllowed && current ? '🔒' : '‹'}
+        {!historyAllowed ? '🔒' : '‹'}
       </button>
       <div className={styles.label}>
         <span className={styles.monthName}>{formatMonthLabel(month)}</span>
