@@ -268,9 +268,10 @@ export default function Profile({ session, profile, onSignOut, showToast, onProf
                 <label>Message</label>
                 <textarea
                   value={contactMessage}
-                  onChange={e => setContactMessage(e.target.value)}
+                  onChange={e => setContactMessage(e.target.value.slice(0, 1000))}
                   placeholder="Describe your question or issue in as much detail as possible..."
                   rows={6}
+                  maxLength={1000}
                   className={styles.textarea}
                 />
                 <div className={styles.fieldHint}>{contactMessage.length}/1000 characters</div>
