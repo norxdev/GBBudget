@@ -387,8 +387,50 @@ export default function Dashboard({ session, isGuest, profile, onUpgrade, onTabC
         </div>
       )}
 
-      {/* Render widgets in user-defined order — each is now truly independent (#7) */}
-      {widgetOrder.map(id => renderWidget(id))}
+      {/* Render widgets in user-defined order.
+           health + kpis are wrapped in healthRow when consecutive for the side-by-side layout.
+           If separated by the user, they render independently (#7) */}
+      {(() => {
+        const rendered = []
+        let i = 0
+        while (i < widgetOrder.length) {
+          const id = widgetOrder[i]
+          const nextId = widgetOrder[i + 1]
+          // If health and kpis appear consecutively, wrap them in healthRow grid
+          if (id === 'health' && nextId === 'kpis') {
+            const healthW = renderWidget('health')
+            const kpiW = renderWidget('kpis')
+            if (healthW || kpiW) {
+              rendered.push(
+                <div key="healthrow" className={styles.healthRow}>
+                  {healthW}
+                  {kpiW}
+                </div>
+              )
+            }
+            i += 2
+          } else if (id === 'kpis' && nextId === 'health') {
+            // Reversed order — still wrap but swap positions
+            const healthW = renderWidget('health')
+            const kpiW = renderWidget('kpis')
+            if (healthW || kpiW) {
+              rendered.push(
+                <div key="healthrow" className={styles.healthRow}>
+                  {kpiW}
+                  {healthW}
+                </div>
+              )
+            }
+            i += 2
+          } else {
+            // Render independently (user separated them)
+            const w = renderWidget(id)
+            if (w) rendered.push(w)
+            i += 1
+          }
+        }
+        return rendered
+      })()}
 
       {showCustomizer && (
         <DashboardCustomizer
