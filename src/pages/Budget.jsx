@@ -126,18 +126,21 @@ export default function Budget({ session, isGuest, profile, showToast, onUpgrade
 
 
   async function handleImport({ rows, mode }) {
-    if (mode === 'replace' && !isGuest) {
-      await supabase.from('budget_entries').delete()
-        .eq('user_id', session.user.id).eq('month', month)
-    }
     if (isGuest) {
-      if (mode === 'replace') saveBudgetEntries(month, rows)
-      else {
+      // Guest: save to localStorage
+      if (mode === 'replace') {
+        saveBudgetEntries(month, rows.map(r => ({ ...r, id: crypto.randomUUID() })))
+      } else {
         const existing = getBudgetEntries(month)
         saveBudgetEntries(month, [...existing, ...rows.map(r => ({ ...r, id: crypto.randomUUID() }))])
       }
       setEntries(getBudgetEntries(month))
     } else {
+      // Logged in: save to Supabase
+      if (mode === 'replace') {
+        await supabase.from('budget_entries').delete()
+          .eq('user_id', session.user.id).eq('month', month)
+      }
       for (const row of rows) {
         await supabase.from('budget_entries').insert({
           user_id: session.user.id, month,
