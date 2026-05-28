@@ -1,11 +1,41 @@
 import { useState } from 'react'
+import { supabase } from '../lib/supabase'
 import styles from './UpgradeModal.module.css'
 
-export default function UpgradeModal({ onClose, showToast }) {
+const MONTHLY_PRICE_ID = 'price_1TaijAHR1jh700B41LgzGpoZ'
+const ANNUAL_PRICE_ID  = 'price_1TaijLHR1jh700B4BaGxGXyD'
+
+export default function UpgradeModal({ session, profile, onClose, showToast, onSuccess }) {
   const [billing, setBilling] = useState('monthly')
+  const [loading, setLoading] = useState(false)
 
   function handleOverlayClick(e) {
     if (e.target === e.currentTarget) onClose()
+  }
+
+  async function handleUpgrade() {
+    if (!session) {
+      showToast('Please sign in to upgrade')
+      onClose()
+      return
+    }
+    setLoading(true)
+    showToast('Redirecting to checkout...')
+    try {
+      const priceId = billing === 'monthly' ? MONTHLY_PRICE_ID : ANNUAL_PRICE_ID
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { priceId, userId: session.user.id, email: session.user.email }
+      })
+      if (error) throw error
+      if (data?.url) {
+        window.location.href = data.url
+      } else {
+        throw new Error('No checkout URL returned')
+      }
+    } catch (e) {
+      showToast('Checkout unavailable — please try again')
+      setLoading(false)
+    }
   }
 
   return (
@@ -16,7 +46,9 @@ export default function UpgradeModal({ onClose, showToast }) {
         <p>Unlock unlimited budgeting, full reports, spending history, and more.</p>
 
         <div className={styles.toggle}>
-          <button className={billing === 'monthly' ? styles.active : ''} onClick={() => setBilling('monthly')}>Monthly</button>
+          <button className={billing === 'monthly' ? styles.active : ''} onClick={() => setBilling('monthly')}>
+            Monthly
+          </button>
           <button className={billing === 'annual' ? styles.active : ''} onClick={() => setBilling('annual')}>
             Annual <span className={styles.saveBadge}>Save 33%</span>
           </button>
@@ -31,15 +63,15 @@ export default function UpgradeModal({ onClose, showToast }) {
 
         <ul className={styles.features}>
           {[
-            { text: 'Unlimited budget rows', free: false },
-            { text: 'Unlimited savings goals', free: false },
-            { text: '12 months of budget history', free: false },
-            { text: 'Category budget limits', free: false },
-            { text: '6-month trend reports', free: false },
-            { text: 'All CSV exports', free: false },
-            { text: 'Goal projections', free: false },
-            { text: 'Affordability analyzer', free: true },
-            { text: 'Financial health score', free: true },
+            { text: 'Unlimited budget rows',         free: false },
+            { text: 'Unlimited savings goals',        free: false },
+            { text: '12 months of budget history',   free: false },
+            { text: 'Category budget limits',         free: false },
+            { text: '6-month trend reports',          free: false },
+            { text: 'All CSV exports',                free: false },
+            { text: 'Goal projections',               free: false },
+            { text: 'Affordability analyzer',         free: true  },
+            { text: 'Financial health score',         free: true  },
           ].map(f => (
             <li key={f.text}>
               <span className={f.free ? styles.checkMuted : styles.check}>✓</span>
@@ -51,9 +83,10 @@ export default function UpgradeModal({ onClose, showToast }) {
 
         <button
           className={styles.ctaBtn}
-          onClick={() => { showToast('Redirecting to checkout...'); onClose() }}
+          onClick={handleUpgrade}
+          disabled={loading}
         >
-          Get Premium →
+          {loading ? 'Redirecting...' : 'Get Premium →'}
         </button>
         <div className={styles.note}>Cancel anytime · Secure payment via Stripe</div>
       </div>

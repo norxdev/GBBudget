@@ -11,17 +11,22 @@ export default function App() {
   const [initialShareParams, setInitialShareParams] = useState(null)
 
   useEffect(() => {
-    // Check for share params in URL on first load
-    const shareParams = parseShareParams()
-    if (shareParams) {
-      setInitialShareParams(shareParams)
-      // Clean URL without refreshing
-      window.history.replaceState({}, '', window.location.pathname)
+    // Parse URL params first — but only treat as share params if they
+    // contain 'tool' key, not checkout keys, to avoid conflicts
+    const urlParams = new URLSearchParams(window.location.search)
+    const hasCheckout = urlParams.has('checkout')
+    const hasTool = urlParams.has('tool')
+
+    if (hasTool && !hasCheckout) {
+      const shareParams = parseShareParams()
+      if (shareParams) {
+        setInitialShareParams(shareParams)
+        window.history.replaceState({}, '', window.location.pathname)
+      }
     }
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        // Verify session is still valid
         const { data: { user }, error } = await supabase.auth.getUser()
         if (error || !user) {
           await supabase.auth.signOut()
@@ -58,7 +63,7 @@ export default function App() {
       <AppShell
         session={session}
         isGuest={!session}
-        onSignOut={() => { setGuestMode(false); if (!session) {} }}
+        onSignOut={() => setGuestMode(false)}
         initialShareParams={initialShareParams}
       />
     )

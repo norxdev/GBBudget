@@ -25,6 +25,11 @@ export default function Reports({ session, profile, showToast, onUpgrade }) {
   const [activeReport, setActiveReport] = useState(null)
   const premium = isPremium(profile)
 
+  // Fix #10 — reset open accordion when month changes
+  useEffect(() => {
+    setActiveReport(null)
+  }, [month])
+
   useEffect(() => {
     async function load() {
       setLoading(true)

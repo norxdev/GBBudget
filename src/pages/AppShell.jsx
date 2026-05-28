@@ -13,11 +13,11 @@ import SignUpPrompt from '../components/SignUpPrompt'
 import styles from './AppShell.module.css'
 
 const TABS = [
-  { id: 'dashboard',     label: 'Dashboard',    icon: '◈' },
-  { id: 'budget',        label: 'Budget',       icon: '≋' },
-  { id: 'goals',         label: 'Goals',        icon: '◎' },
-  { id: 'affordability', label: 'Affordability', icon: '?' },
-  { id: 'reports',       label: 'Reports',      icon: '↓' },
+  { id: 'dashboard',     label: 'Dashboard',     icon: '◈' },
+  { id: 'budget',        label: 'Budget',         icon: '≋' },
+  { id: 'goals',         label: 'Goals',          icon: '◎' },
+  { id: 'affordability', label: 'Affordability',  icon: '?' },
+  { id: 'reports',       label: 'Reports',        icon: '↓' },
 ]
 
 export default function AppShell({ session, isGuest, onSignOut, initialShareParams }) {
@@ -35,16 +35,17 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
     if (session) loadProfile()
   }, [session])
 
-  // Reload profile if returning from successful checkout
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success' && session) {
+      // Wait for webhook to process then reload profile
       setTimeout(() => loadProfile(), 2500)
       window.history.replaceState({}, '', window.location.pathname)
       showToast('Welcome to Premium!')
     }
     if (params.get('checkout') === 'cancelled') {
       window.history.replaceState({}, '', window.location.pathname)
+      showToast('Checkout cancelled')
     }
   }, [session])
 
@@ -81,7 +82,7 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
 
   function handleSignOut() {
     if (session) supabase.auth.signOut()
-    else onSignOut?.()
+    else onSignOut()
   }
 
   function handleSignUpFromPrompt() {
@@ -89,16 +90,20 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
     handleSignOut()
   }
 
+  function handleUpgrade() {
+    setShowUpgrade(true)
+  }
+
   const displayName = isGuest ? 'Guest' : (profile?.full_name || session?.user?.email?.split('@')[0] || 'User')
   const initials = isGuest ? 'G' : displayName.slice(0, 2).toUpperCase()
-  const isPremium = profile?.plan === 'premium'
+  const userIsPremium = profile?.plan === 'premium'
 
   const sharedProps = {
     session,
     isGuest,
     profile,
     showToast,
-    onUpgrade: () => setShowUpgrade(true),
+    onUpgrade: handleUpgrade,
     onTabChange: handleTabChange,
     requireAuth,
     initialShareParams,
@@ -130,8 +135,8 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
             <span className={styles.userName}>{displayName}</span>
             {isGuest
               ? <span className={styles.badgeGuest}>Guest</span>
-              : <span className={`${styles.badgeFree} ${isPremium ? styles.badgePremium : ''}`}>
-                  {isPremium ? 'Pro' : 'Free'}
+              : <span className={`${styles.badgeFree} ${userIsPremium ? styles.badgePremium : ''}`}>
+                  {userIsPremium ? 'Pro' : 'Free'}
                 </span>
             }
           </div>
@@ -148,6 +153,7 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
             onSignOut={handleSignOut}
             showToast={showToast}
             onProfileUpdate={loadProfile}
+            onUpgrade={handleUpgrade}
           />
         )}
         {showProfile && isGuest && (
@@ -163,6 +169,7 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
         {!showProfile && activeTab === 'reports' && !isGuest && <Reports {...sharedProps} />}
       </div>
 
+      {/* Mobile bottom nav — 5 tabs, no profile (profile is in top nav) */}
       <nav className={styles.bottomNav}>
         {TABS.map(tab => (
           <button
@@ -174,16 +181,17 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
             {tab.label}
           </button>
         ))}
-        <button
-          className={`${styles.bottomNavTab} ${showProfile ? styles.active : ''}`}
-          onClick={() => { setShowProfile(p => !p); setActiveTab('') }}
-        >
-          <span className={styles.bottomNavIcon}>{initials}</span>
-          Profile
-        </button>
       </nav>
 
-      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} showToast={showToast} />}
+      {showUpgrade && (
+        <UpgradeModal
+          session={session}
+          profile={profile}
+          onClose={() => setShowUpgrade(false)}
+          showToast={showToast}
+          onSuccess={loadProfile}
+        />
+      )}
       {showSignUpPrompt && (
         <SignUpPrompt
           reason={signUpPromptReason}

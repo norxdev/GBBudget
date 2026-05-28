@@ -159,7 +159,7 @@ export default function Goals({ session, isGuest, profile, showToast, onUpgrade 
           })}
           <div className={styles.addCard} onClick={handleAddGoalClick}>
             <div className={styles.addIcon}>+</div>
-            <p>{!premium && goals.length >= FREE_GOAL_LIMIT ? 'Upgrade for more goals' : 'Add a new goal'}</p>
+            <p>{isGuest && goals.length >= FREE_GOAL_LIMIT ? 'Sign up to add more goals' : !premium && goals.length >= FREE_GOAL_LIMIT ? 'Upgrade for more goals' : 'Add a new goal'}</p>
           </div>
         </div>
       )}

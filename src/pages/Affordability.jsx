@@ -55,7 +55,7 @@ function calcAffordability({ purchasePrice, recurringCost, monthlyIncome, monthl
   }
 }
 
-export default function Affordability({ session, isGuest, showToast, initialShareParams }) {
+export default function Affordability({ session, isGuest, profile, showToast, initialShareParams }) {
   const [form, setForm] = useState({ purchasePrice: '', recurringCost: '', downPayment: '', monthlyIncome: '', monthlyExpenses: '', monthlySavings: '' })
   const [result, setResult] = useState(initialShareParams?.tool === 'afford' ? initialShareParams : null)
   const [loadedFromBudget, setLoadedFromBudget] = useState(false)
