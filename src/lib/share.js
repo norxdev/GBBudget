@@ -1,8 +1,5 @@
-// Sharing utilities - encodes results in URL, no sensitive data exposed
-
 const BASE_URL = 'https://norxdev.github.io/GBBudget'
 
-// Affordability share
 export function buildAffordabilityShareUrl(result, purchaseLabel) {
   const params = new URLSearchParams({
     tool: 'afford',
@@ -16,23 +13,37 @@ export function buildAffordabilityShareUrl(result, purchaseLabel) {
   return `${BASE_URL}?${params.toString()}`
 }
 
-// Health score share
 export function buildHealthShareUrl(score, grade, savingsRate) {
+  const params = new URLSearchParams({ tool: 'health', score, grade, sr: savingsRate })
+  return `${BASE_URL}?${params.toString()}`
+}
+
+export function buildDebtShareUrl(result, debtType, balance) {
   const params = new URLSearchParams({
-    tool: 'health',
-    score,
-    grade,
-    sr: savingsRate,
+    tool: 'debt',
+    type: debtType,
+    months: result.months,
+    date: result.payoffDate,
+    interest: result.totalInterest,
   })
   return `${BASE_URL}?${params.toString()}`
 }
 
-// Parse share params from URL on load
+export function buildSavingsShareUrl(result, goalType) {
+  const params = new URLSearchParams({
+    tool: 'savings',
+    type: goalType,
+    months: result.months || 0,
+    date: result.projectedDate || '',
+    pct: result.pct,
+  })
+  return `${BASE_URL}?${params.toString()}`
+}
+
 export function parseShareParams() {
   const params = new URLSearchParams(window.location.search)
   const tool = params.get('tool')
   if (!tool) return null
-
   if (tool === 'afford') {
     return {
       tool: 'afford',
@@ -44,20 +55,18 @@ export function parseShareParams() {
       label: params.get('label'),
     }
   }
-
   if (tool === 'health') {
-    return {
-      tool: 'health',
-      score: Number(params.get('score')),
-      grade: params.get('grade'),
-      savingsRate: Number(params.get('sr')),
-    }
+    return { tool: 'health', score: Number(params.get('score')), grade: params.get('grade'), savingsRate: Number(params.get('sr')) }
   }
-
+  if (tool === 'debt') {
+    return { tool: 'debt', debtType: params.get('type'), months: Number(params.get('months')), payoffDate: params.get('date'), totalInterest: Number(params.get('interest')) }
+  }
+  if (tool === 'savings') {
+    return { tool: 'savings', goalType: params.get('type'), months: Number(params.get('months')), projectedDate: params.get('date'), pct: Number(params.get('pct')) }
+  }
   return null
 }
 
-// Social share helpers
 export function shareToTwitter(text, url) {
   const encoded = encodeURIComponent(`${text} ${url}`)
   window.open(`https://twitter.com/intent/tweet?text=${encoded}`, '_blank')
@@ -73,7 +82,6 @@ export async function copyToClipboard(text) {
     await navigator.clipboard.writeText(text)
     return true
   } catch {
-    // Fallback
     const el = document.createElement('textarea')
     el.value = text
     document.body.appendChild(el)
