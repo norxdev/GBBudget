@@ -4,7 +4,7 @@ import Dashboard from './Dashboard'
 import Budget from './Budget'
 import Goals from './Goals'
 import Reports from './Reports'
-import Affordability from './Affordability'
+import Tools from './Tools'
 import Profile from './Profile'
 import UpgradeModal from '../components/UpgradeModal'
 import Toast from '../components/Toast'
@@ -13,16 +13,16 @@ import SignUpPrompt from '../components/SignUpPrompt'
 import styles from './AppShell.module.css'
 
 const TABS = [
-  { id: 'dashboard',     label: 'Dashboard',     icon: '◈' },
-  { id: 'budget',        label: 'Budget',         icon: '≋' },
-  { id: 'goals',         label: 'Goals',          icon: '◎' },
-  { id: 'affordability', label: 'Affordability',  icon: '?' },
-  { id: 'reports',       label: 'Reports',        icon: '↓' },
+  { id: 'dashboard', label: 'Dashboard', icon: '◈' },
+  { id: 'budget',    label: 'Budget',    icon: '≋' },
+  { id: 'goals',     label: 'Goals',     icon: '◎' },
+  { id: 'tools',     label: 'Tools',     icon: '⚡' },
+  { id: 'reports',   label: 'Reports',   icon: '↓' },
 ]
 
 export default function AppShell({ session, isGuest, onSignOut, initialShareParams }) {
   const [activeTab, setActiveTab] = useState(
-    initialShareParams?.tool === 'afford' ? 'affordability' : 'dashboard'
+    initialShareParams?.tool ? 'tools' : 'dashboard'
   )
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
@@ -38,7 +38,6 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success' && session) {
-      // Wait for webhook to process then reload profile
       setTimeout(() => loadProfile(), 2500)
       window.history.replaceState({}, '', window.location.pathname)
       showToast('Welcome to Premium!')
@@ -90,20 +89,13 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
     handleSignOut()
   }
 
-  function handleUpgrade() {
-    setShowUpgrade(true)
-  }
-
   const displayName = isGuest ? 'Guest' : (profile?.full_name || session?.user?.email?.split('@')[0] || 'User')
   const initials = isGuest ? 'G' : displayName.slice(0, 2).toUpperCase()
   const userIsPremium = profile?.plan === 'premium'
 
   const sharedProps = {
-    session,
-    isGuest,
-    profile,
-    showToast,
-    onUpgrade: handleUpgrade,
+    session, isGuest, profile, showToast,
+    onUpgrade: () => setShowUpgrade(true),
     onTabChange: handleTabChange,
     requireAuth,
     initialShareParams,
@@ -153,7 +145,7 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
             onSignOut={handleSignOut}
             showToast={showToast}
             onProfileUpdate={loadProfile}
-            onUpgrade={handleUpgrade}
+            onUpgrade={() => setShowUpgrade(true)}
           />
         )}
         {showProfile && isGuest && (
@@ -162,14 +154,14 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
             <button onClick={handleSignUpFromPrompt} style={{ background: 'var(--text)', color: 'white', border: 'none', borderRadius: '10px', padding: '12px 24px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Create free account</button>
           </div>
         )}
-        {!showProfile && activeTab === 'dashboard'     && <Dashboard     {...sharedProps} />}
-        {!showProfile && activeTab === 'budget'        && <Budget        {...sharedProps} />}
-        {!showProfile && activeTab === 'goals'         && <Goals         {...sharedProps} />}
-        {!showProfile && activeTab === 'affordability' && <Affordability {...sharedProps} />}
+        {!showProfile && activeTab === 'dashboard' && <Dashboard {...sharedProps} />}
+        {!showProfile && activeTab === 'budget'    && <Budget    {...sharedProps} />}
+        {!showProfile && activeTab === 'goals'     && <Goals     {...sharedProps} />}
+        {!showProfile && activeTab === 'tools'     && <Tools     {...sharedProps} />}
         {!showProfile && activeTab === 'reports' && !isGuest && <Reports {...sharedProps} />}
       </div>
 
-      {/* Mobile bottom nav — 5 tabs, no profile (profile is in top nav) */}
+      {/* Mobile bottom nav — 5 tabs */}
       <nav className={styles.bottomNav}>
         {TABS.map(tab => (
           <button
