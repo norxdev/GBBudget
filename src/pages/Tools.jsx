@@ -6,9 +6,19 @@ import BudgetHealthCheck from './tools/BudgetHealthCheck'
 import Affordability from './Affordability'
 import styles from './Tools.module.css'
 
+const TOOL_NAMES = {
+  affordability: 'Affordability Analyzer',
+  debt:          'Debt Payoff Calculator',
+  savings:       'Savings Goal Calculator',
+  health:        'Budget Health Check',
+}
+
 export default function Tools({ session, isGuest, profile, showToast, onUpgrade, onTabChange, initialShareParams }) {
   const [activeTool, setActiveTool] = useState(
-    initialShareParams?.tool === 'afford' ? 'affordability' : null
+    initialShareParams?.tool === 'afford'  ? 'affordability' :
+    initialShareParams?.tool === 'debt'    ? 'debt' :
+    initialShareParams?.tool === 'savings' ? 'savings' :
+    initialShareParams?.tool === 'health'  ? 'health' : null
   )
 
   function handleSelectTool(id) {
@@ -28,31 +38,26 @@ export default function Tools({ session, isGuest, profile, showToast, onUpgrade,
       {activeTool && (
         <div className={styles.backBar}>
           <button className={styles.backBtn} onClick={handleBack}>
-            ← All Tools
+            ← Tools
           </button>
-          <span className={styles.backLabel}>
-            {activeTool === 'affordability' && 'Affordability Analyzer'}
-            {activeTool === 'debt'          && 'Debt Payoff Calculator'}
-            {activeTool === 'savings'       && 'Savings Goal Calculator'}
-            {activeTool === 'health'        && 'Budget Health Check'}
-          </span>
+          <span className={styles.separator}>/</span>
+          <span className={styles.backLabel}>{TOOL_NAMES[activeTool]}</span>
         </div>
       )}
 
-      {!activeTool && (
-        <ToolsHub onSelectTool={handleSelectTool} />
-      )}
+      {!activeTool && <ToolsHub onSelectTool={handleSelectTool} />}
+
       {activeTool === 'affordability' && (
         <Affordability {...sharedProps} initialShareParams={initialShareParams} />
       )}
       {activeTool === 'debt' && (
-        <DebtPayoff {...sharedProps} />
+        <DebtPayoff {...sharedProps} initialShareParams={initialShareParams} />
       )}
       {activeTool === 'savings' && (
-        <SavingsGoalCalc {...sharedProps} />
+        <SavingsGoalCalc {...sharedProps} initialShareParams={initialShareParams} />
       )}
       {activeTool === 'health' && (
-        <BudgetHealthCheck {...sharedProps} />
+        <BudgetHealthCheck {...sharedProps} initialShareParams={initialShareParams} />
       )}
     </div>
   )
