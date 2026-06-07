@@ -9,10 +9,9 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [guestMode, setGuestMode] = useState(false)
   const [initialShareParams, setInitialShareParams] = useState(null)
+  const [isSharedLink, setIsSharedLink] = useState(false)
 
   useEffect(() => {
-    // Parse URL params first — but only treat as share params if they
-    // contain 'tool' key, not checkout keys, to avoid conflicts
     const urlParams = new URLSearchParams(window.location.search)
     const hasCheckout = urlParams.has('checkout')
     const hasTool = urlParams.has('tool')
@@ -21,6 +20,7 @@ export default function App() {
       const shareParams = parseShareParams()
       if (shareParams) {
         setInitialShareParams(shareParams)
+        setIsSharedLink(true)
         window.history.replaceState({}, '', window.location.pathname)
       }
     }
@@ -58,12 +58,15 @@ export default function App() {
     )
   }
 
-  if (session || guestMode) {
+  // Fix #2: if a shared link is detected and no session, auto-enter guest mode
+  // so the user lands on the tool instead of the login page
+  if (session || guestMode || isSharedLink) {
     return (
       <AppShell
         session={session}
         isGuest={!session}
-        onSignOut={() => setGuestMode(false)}
+        isSharedLink={isSharedLink}
+        onSignOut={() => { setGuestMode(false); setIsSharedLink(false) }}
         initialShareParams={initialShareParams}
       />
     )

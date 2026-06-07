@@ -14,28 +14,34 @@ export function buildAffordabilityShareUrl(result, purchaseLabel) {
 }
 
 export function buildHealthShareUrl(score, grade, savingsRate) {
-  const params = new URLSearchParams({ tool: 'health', score, grade, sr: savingsRate })
-  return `${BASE_URL}?${params.toString()}`
-}
-
-export function buildDebtShareUrl(result, debtType, balance) {
   const params = new URLSearchParams({
-    tool: 'debt',
-    type: debtType,
-    months: result.months,
-    date: result.payoffDate,
-    interest: result.totalInterest,
+    tool: 'health',
+    score,
+    grade,
+    sr: savingsRate,
   })
   return `${BASE_URL}?${params.toString()}`
 }
 
-export function buildSavingsShareUrl(result, goalType) {
+export function buildDebtShareUrl(result, debtLabel, balance) {
+  const params = new URLSearchParams({
+    tool: 'debt',
+    label: debtLabel || 'Debt',
+    months: result.months,
+    date: result.payoffDate,
+    interest: result.totalInterest,
+    balance: balance || 0,
+  })
+  return `${BASE_URL}?${params.toString()}`
+}
+
+export function buildSavingsShareUrl(result, goalLabel) {
   const params = new URLSearchParams({
     tool: 'savings',
-    type: goalType,
-    months: result.months || 0,
-    date: result.projectedDate || '',
+    label: goalLabel || 'Goal',
     pct: result.pct,
+    date: result.projectedDate || '',
+    months: result.months || 0,
   })
   return `${BASE_URL}?${params.toString()}`
 }
@@ -44,6 +50,7 @@ export function parseShareParams() {
   const params = new URLSearchParams(window.location.search)
   const tool = params.get('tool')
   if (!tool) return null
+
   if (tool === 'afford') {
     return {
       tool: 'afford',
@@ -55,15 +62,37 @@ export function parseShareParams() {
       label: params.get('label'),
     }
   }
+
   if (tool === 'health') {
-    return { tool: 'health', score: Number(params.get('score')), grade: params.get('grade'), savingsRate: Number(params.get('sr')) }
+    return {
+      tool: 'health',
+      score: Number(params.get('score')),
+      grade: params.get('grade'),
+      savingsRate: Number(params.get('sr')),
+    }
   }
+
   if (tool === 'debt') {
-    return { tool: 'debt', debtType: params.get('type'), months: Number(params.get('months')), payoffDate: params.get('date'), totalInterest: Number(params.get('interest')) }
+    return {
+      tool: 'debt',
+      label: params.get('label'),
+      months: Number(params.get('months')),
+      payoffDate: params.get('date'),
+      totalInterest: Number(params.get('interest')),
+      balance: Number(params.get('balance')),
+    }
   }
+
   if (tool === 'savings') {
-    return { tool: 'savings', goalType: params.get('type'), months: Number(params.get('months')), projectedDate: params.get('date'), pct: Number(params.get('pct')) }
+    return {
+      tool: 'savings',
+      label: params.get('label'),
+      pct: Number(params.get('pct')),
+      projectedDate: params.get('date'),
+      months: Number(params.get('months')),
+    }
   }
+
   return null
 }
 

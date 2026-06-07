@@ -9,6 +9,7 @@ import Profile from './Profile'
 import UpgradeModal from '../components/UpgradeModal'
 import Toast from '../components/Toast'
 import GuestBanner from '../components/GuestBanner'
+import SharedLinkBanner from '../components/SharedLinkBanner'
 import SignUpPrompt from '../components/SignUpPrompt'
 import styles from './AppShell.module.css'
 
@@ -20,7 +21,7 @@ const TABS = [
   { id: 'reports',   label: 'Reports',   icon: '↓' },
 ]
 
-export default function AppShell({ session, isGuest, onSignOut, initialShareParams }) {
+export default function AppShell({ session, isGuest, isSharedLink, onSignOut, initialShareParams }) {
   const [activeTab, setActiveTab] = useState(
     initialShareParams?.tool ? 'tools' : 'dashboard'
   )
@@ -135,7 +136,14 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
         </div>
       </nav>
 
-      {isGuest && <GuestBanner onSignUp={handleSignUpFromPrompt} />}
+      {/* Show shared link banner if arriving from a share URL */}
+      {isGuest && isSharedLink && (
+        <SharedLinkBanner onSignUp={handleSignUpFromPrompt} />
+      )}
+      {/* Show regular guest banner only if NOT a shared link */}
+      {isGuest && !isSharedLink && (
+        <GuestBanner onSignUp={handleSignUpFromPrompt} />
+      )}
 
       <div className={styles.content}>
         {showProfile && session && (
@@ -161,7 +169,6 @@ export default function AppShell({ session, isGuest, onSignOut, initialSharePara
         {!showProfile && activeTab === 'reports' && !isGuest && <Reports {...sharedProps} />}
       </div>
 
-      {/* Mobile bottom nav — 5 tabs */}
       <nav className={styles.bottomNav}>
         {TABS.map(tab => (
           <button
