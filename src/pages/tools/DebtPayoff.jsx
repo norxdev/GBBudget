@@ -1,6 +1,12 @@
 import { useState } from 'react'
+import { supabase } from '../../lib/supabase'
+import { getCurrentMonth } from '../../lib/months'
+import { isPremium, canAddBudgetRow } from '../../lib/plans'
+import { buildDebtShareUrl } from '../../lib/share'
 import ShareCard from '../../components/ShareCard'
 import styles from './Tool.module.css'
+
+const FREE_ROW_LIMIT = 10
 
 function calcDebtPayoff({ balance, rate, payment, extra = 0 }) {
   if (!balance || !rate || !payment) return null
@@ -28,21 +34,24 @@ function calcDebtPayoff({ balance, rate, payment, extra = 0 }) {
 }
 
 const DEBT_TYPES = [
-  { id: 'mortgage', label: 'Mortgage',      defaultRate: 6.5,  defaultPayment: 1500 },
-  { id: 'car',      label: 'Car Loan',      defaultRate: 7.0,  defaultPayment: 400  },
-  { id: 'student',  label: 'Student Loan',  defaultRate: 5.5,  defaultPayment: 300  },
-  { id: 'credit',   label: 'Credit Card',   defaultRate: 22.0, defaultPayment: 100  },
-  { id: 'personal', label: 'Personal Loan', defaultRate: 10.0, defaultPayment: 200  },
-  { id: 'other',    label: 'Other',         defaultRate: 8.0,  defaultPayment: 200  },
+  { id: 'mortgage', label: 'Mortgage',      icon: '🏠', defaultRate: 6.5,  defaultPayment: 1500, category: 'Housing' },
+  { id: 'car',      label: 'Car Loan',      icon: '🚗', defaultRate: 7.0,  defaultPayment: 400,  category: 'Transport' },
+  { id: 'student',  label: 'Student Loan',  icon: '🎓', defaultRate: 5.5,  defaultPayment: 300,  category: 'Other' },
+  { id: 'credit',   label: 'Credit Card',   icon: '💳', defaultRate: 22.0, defaultPayment: 100,  category: 'Other' },
+  { id: 'personal', label: 'Personal Loan', icon: '💰', defaultRate: 10.0, defaultPayment: 200,  category: 'Other' },
+  { id: 'other',    label: 'Other',         icon: '📋', defaultRate: 8.0,  defaultPayment: 200,  category: 'Other' },
 ]
 
-export default function DebtPayoff({ isGuest, onTabChange }) {
+export default function DebtPayoff({ session, isGuest, profile, showToast, onTabChange, onUpgrade }) {
   const [debtType, setDebtType] = useState('mortgage')
   const [form, setForm] = useState({ balance: '', rate: '', payment: '', extra: '' })
   const [result, setResult] = useState(null)
   const [baseResult, setBaseResult] = useState(null)
   const [showShare, setShowShare] = useState(false)
+  const [addingToBudget, setAddingToBudget] = useState(false)
+  const [addedToBudget, setAddedToBudget] = useState(false)
   const selected = DEBT_TYPES.find(d => d.id === debtType)
+  const premium = isPremium(profile)
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); setResult(null) }
 
@@ -53,31 +62,74 @@ export default function DebtPayoff({ isGuest, onTabChange }) {
   function analyze() {
     const r = calcDebtPayoff(form)
     setResult(r)
+    setAddedToBudget(false)
     if (form.extra && Number(form.extra) > 0) {
       setBaseResult(calcDebtPayoff({ ...form, extra: 0 }))
     } else {
       setBaseResult(null)
     }
     setShowShare(false)
-    setTimeout(() => document.getElementById('tool-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  function reset() { setForm({ balance: '', rate: '', payment: '', extra: '' }); setResult(null); setBaseResult(null); setShowShare(false) }
+  function reset() {
+    setForm({ balance: '', rate: '', payment: '', extra: '' })
+    setResult(null); setBaseResult(null); setShowShare(false); setAddedToBudget(false)
+  }
+
+  async function handleAddToBudget() {
+    if (isGuest) {
+      showToast('Sign in to add this to your budget')
+      return
+    }
+    setAddingToBudget(true)
+
+    // Check current row count
+    const { data: existing } = await supabase
+      .from('budget_entries').select('id')
+      .eq('user_id', session.user.id)
+      .eq('month', getCurrentMonth())
+
+    const currentCount = existing?.length || 0
+
+    if (!premium && currentCount >= FREE_ROW_LIMIT) {
+      showToast(`${FREE_ROW_LIMIT}/${FREE_ROW_LIMIT} rows used — upgrade for unlimited`)
+      onUpgrade()
+      setAddingToBudget(false)
+      return
+    }
+
+    const { error } = await supabase.from('budget_entries').insert({
+      user_id: session.user.id,
+      month: getCurrentMonth(),
+      description: `${selected.label} payment`,
+      category: selected.category,
+      entry_type: 'expense',
+      frequency: 'recurring',
+      amount: Number(form.payment),
+    })
+
+    if (error) {
+      showToast('Failed to add — please try again')
+    } else {
+      setAddedToBudget(true)
+      showToast(`${selected.label} payment added to your budget!`)
+    }
+    setAddingToBudget(false)
+  }
 
   const canAnalyze = form.balance && form.rate && form.payment
-
   const extraSavings = result && baseResult && !result.impossible && !baseResult.impossible
     ? { monthsSaved: baseResult.months - result.months, interestSaved: baseResult.totalInterest - result.totalInterest }
     : null
+
+  const shareUrl = result && !result?.impossible
+    ? buildDebtShareUrl(result, selected.label, form.balance)
+    : ''
 
   function formatMonths(m) {
     if (m >= 12) return `${Math.floor(m / 12)}yr ${m % 12}mo`
     return `${m} months`
   }
-
-  const shareUrl = result && !result.impossible
-    ? `https://norxdev.github.io/GBBudget/?tool=debt&label=${encodeURIComponent(selected.label)}&payoff=${encodeURIComponent(result.payoffDate)}&months=${result.months}&interest=${result.totalInterest}`
-    : ''
 
   return (
     <div className={styles.page}>
@@ -94,8 +146,10 @@ export default function DebtPayoff({ isGuest, onTabChange }) {
             <div className={styles.cardTitle}>Type of debt</div>
             <div className={styles.typeGrid}>
               {DEBT_TYPES.map(t => (
-                <button key={t.id} className={`${styles.typeBtn} ${debtType === t.id ? styles.typeActive : ''}`}
-                  onClick={() => { setDebtType(t.id); setResult(null) }}>
+                <button key={t.id}
+                  className={`${styles.typeBtn} ${debtType === t.id ? styles.typeActive : ''}`}
+                  onClick={() => { setDebtType(t.id); setResult(null); setAddedToBudget(false) }}>
+                  <span className={styles.typeIcon}>{t.icon}</span>
                   <span className={styles.typeLabel}>{t.label}</span>
                 </button>
               ))}
@@ -135,7 +189,7 @@ export default function DebtPayoff({ isGuest, onTabChange }) {
                   <span className={styles.inputPrefix}>$</span>
                   <input type="number" placeholder="0" value={form.extra} onChange={e => setField('extra', e.target.value)} />
                 </div>
-                <div className={styles.fieldHint}>See how extra payments save you</div>
+                <div className={styles.fieldHint}>See how much extra payments save you</div>
               </div>
             </div>
             <button className={styles.analyzeBtn} onClick={analyze} disabled={!canAnalyze}>
@@ -167,12 +221,12 @@ export default function DebtPayoff({ isGuest, onTabChange }) {
               <div className={styles.metricsGrid}>
                 <div className={styles.metricCard}>
                   <div className={styles.metricValue} style={{ color: 'var(--red)' }}>${result.totalInterest.toLocaleString()}</div>
-                  <div className={styles.metricLabel}>Total interest paid</div>
+                  <div className={styles.metricLabel}>Total interest</div>
                   <div className={styles.metricSub}>Cost of borrowing</div>
                 </div>
                 <div className={styles.metricCard}>
                   <div className={styles.metricValue}>${result.totalPaid.toLocaleString()}</div>
-                  <div className={styles.metricLabel}>Total amount paid</div>
+                  <div className={styles.metricLabel}>Total paid</div>
                   <div className={styles.metricSub}>Principal + interest</div>
                 </div>
               </div>
@@ -184,8 +238,8 @@ export default function DebtPayoff({ isGuest, onTabChange }) {
                   <div className={styles.stackInterest} style={{ width: Math.round((result.totalInterest / result.totalPaid) * 100) + '%' }} />
                 </div>
                 <div className={styles.stackLabels}>
-                  <span><span className={styles.dot} style={{ background: 'var(--accent)' }} />Principal {Math.round((Number(form.balance) / result.totalPaid) * 100)}%</span>
-                  <span><span className={styles.dot} style={{ background: 'var(--red)' }} />Interest {Math.round((result.totalInterest / result.totalPaid) * 100)}%</span>
+                  <span><span className={styles.dot} style={{ background: 'var(--accent)' }} /> Principal {Math.round((Number(form.balance) / result.totalPaid) * 100)}%</span>
+                  <span><span className={styles.dot} style={{ background: 'var(--red)' }} /> Interest {Math.round((result.totalInterest / result.totalPaid) * 100)}%</span>
                 </div>
               </div>
 
@@ -206,6 +260,21 @@ export default function DebtPayoff({ isGuest, onTabChange }) {
                 </div>
               )}
 
+              {/* Add to budget CTA */}
+              {!addedToBudget ? (
+                <button
+                  className={styles.addToAppBtn}
+                  onClick={handleAddToBudget}
+                  disabled={addingToBudget}
+                >
+                  {addingToBudget ? 'Adding...' : `+ Add ${selected.label} payment to my budget`}
+                </button>
+              ) : (
+                <div className={styles.addedSuccess}>
+                  Added to your budget — <button onClick={() => onTabChange('budget')}>view budget</button>
+                </div>
+              )}
+
               <button className={styles.shareToggleBtn} onClick={() => setShowShare(s => !s)}>
                 {showShare ? 'Hide share options' : 'Share this result'}
               </button>
@@ -218,13 +287,6 @@ export default function DebtPayoff({ isGuest, onTabChange }) {
               )}
 
               <button className={styles.resetBtn} onClick={reset}>Calculate another debt</button>
-
-              {!isGuest && (
-                <div className={styles.ctaBanner}>
-                  <span>Track this alongside your full budget</span>
-                  <button onClick={() => onTabChange('budget')}>Open Budget</button>
-                </div>
-              )}
             </>
           )}
         </div>
