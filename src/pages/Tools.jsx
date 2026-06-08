@@ -35,6 +35,7 @@ export default function Tools({ session, isGuest, profile, showToast, onUpgrade,
 
   return (
     <div>
+      {/* Back bar renders above content — not sticky, no overlap */}
       {activeTool && (
         <div className={styles.backBar}>
           <button className={styles.backBtn} onClick={handleBack}>
@@ -45,20 +46,22 @@ export default function Tools({ session, isGuest, profile, showToast, onUpgrade,
         </div>
       )}
 
-      {!activeTool && <ToolsHub onSelectTool={handleSelectTool} />}
+      <div className={styles.toolContent}>
+        {!activeTool && <ToolsHub onSelectTool={handleSelectTool} />}
 
-      {activeTool === 'affordability' && (
-        <Affordability {...sharedProps} initialShareParams={initialShareParams} />
-      )}
-      {activeTool === 'debt' && (
-        <DebtPayoff {...sharedProps} initialShareParams={initialShareParams} />
-      )}
-      {activeTool === 'savings' && (
-        <SavingsGoalCalc {...sharedProps} initialShareParams={initialShareParams} />
-      )}
-      {activeTool === 'health' && (
-        <BudgetHealthCheck {...sharedProps} initialShareParams={initialShareParams} />
-      )}
+        {activeTool === 'affordability' && (
+          <Affordability {...sharedProps} initialShareParams={initialShareParams} />
+        )}
+        {activeTool === 'debt' && (
+          <DebtPayoff {...sharedProps} initialShareParams={initialShareParams} />
+        )}
+        {activeTool === 'savings' && (
+          <SavingsGoalCalc {...sharedProps} initialShareParams={initialShareParams} />
+        )}
+        {activeTool === 'health' && (
+          <BudgetHealthCheck {...sharedProps} initialShareParams={initialShareParams} />
+        )}
+      </div>
     </div>
   )
 }
